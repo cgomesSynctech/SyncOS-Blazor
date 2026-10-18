@@ -1,0 +1,55 @@
+@model Modelos.Parcela
+
+@{
+    ViewData["Title"] = "Detalhes da Parcela";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<h2>Detalhes da Parcela</h2>
+<hr />
+
+<div class="card col-md-8 p-3 shadow-sm">
+    <dl class="row mb-0">
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.NomeCliente)</dt>
+        <dd class="col-sm-9">@Html.DisplayFor(model => model.NomeCliente)</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.CPFCNPJ)</dt>
+        <dd class="col-sm-9">@Html.DisplayFor(model => model.CPFCNPJ)</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Fone)</dt>
+        <dd class="col-sm-9">@Html.DisplayFor(model => model.Fone)</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Email)</dt>
+        <dd class="col-sm-9">@Html.DisplayFor(model => model.Email)</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.DataVencimento)</dt>
+        <dd class="col-sm-9">@Model.DataVencimento.ToString("dd/MM/yyyy")</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Valor)</dt>
+        <dd class="col-sm-9">@Model.Valor.ToString("C")</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Status)</dt>
+        <dd class="col-sm-9">
+            @switch (Model.Status)
+            {
+                case "A":
+                    <span class="badge badge-warning text-dark">A Vencer</span>
+                    break;
+                case "V":
+                    <span class="badge badge-danger">Vencido</span>
+                    break;
+                case "L":
+                    <span class="badge badge-success">Liquidado</span>
+                    break;
+                default:
+                    <span class="badge badge-secondary">@Model.Status</span>
+                    break;
+            }
+        </dd>
+    </dl>
+</div>
+
+<div class="mt-3">
+    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary"><i class="fas fa-edit"></i> Editar</a>
+    <a asp-action="Index" class="btn btn-secondary">Voltar à lista</a>
+</div>

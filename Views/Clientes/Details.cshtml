@@ -1,0 +1,117 @@
+﻿@model Modelos.Cliente
+
+@{
+    ViewData["Title"] = "Details";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<div>
+    <h4>Cliente: @Html.DisplayFor(model => model.Razao)</h4>
+    <hr />
+
+    <div class="form-group">
+        Revenda: @Html.DisplayFor(model => model.Revenda.Descricao)
+    </div>
+
+    <div class="form-group">
+        Razão: @Html.DisplayFor(model => model.Razao)
+    </div>
+
+    <div class="form-group">
+        Fantasia: @Html.DisplayFor(model => model.Fantasia)
+    </div>
+
+    <div class="form-group">
+        <div class="row">
+            <div class="col-md-4">
+                CNPJ/CFP:  @Html.DisplayFor(model => model.CPF_CNPJ)
+            </div>
+            <div class="col-md-4">
+                Insc. Estadual: @Html.DisplayFor(model => model.InscricaoEstadual)
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <div class="row">
+            <div class="col-md-4">
+                Endereço: @Html.DisplayFor(model => model.Endereco)
+            </div>
+            <div class="col-md-4">
+                Municipio:  @Html.DisplayFor(model => model.Municipio.Descricao)
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <div class="row">
+            <div class="col-md-4">
+                Bairro: @Html.DisplayFor(model => model.Bairro)
+            </div>
+            <div class="col-md-4">
+                CEP: @Html.DisplayFor(model => model.CEP)
+            </div>
+        </div>
+    </div>
+    <div class="row">
+        <div class="col-md-4">
+            Número: @Html.DisplayFor(model => model.Numero)
+        </div>
+        <div class="col-md-4">
+            UF: @Html.DisplayFor(model => model.UF.Codigo)
+        </div>
+    </div>
+    <br/>
+    <div class="form-group">
+        <div class="row">
+            <div class="col-md-4">
+                Bloqueado: @Html.DisplayFor(model => model.Bloqueado)
+            </div>
+            <div class="col-md-4">
+                Desativado: @Html.DisplayFor(model => model.Desativado)
+            </div>
+        </div>
+    </div>
+
+    <div class="form-group">
+        <div class="row">
+            <div class="col-md-4">
+                Ultima Atualizacao: @Html.DisplayFor(model => model.UltimaAtualizacao)
+            </div>
+            <div class="col-md-4">
+                Data Inclusao: @Html.DisplayFor(model => model.DataInclusao)
+            </div>
+        </div>
+    </div>
+    <div class="form-group">
+        <div class="row">
+            <div class="col-md-6">
+                Data Alteração: @Html.DisplayFor(model => model.DataAlteracao)
+            </div>
+            <div class="col-md-6">
+                Latitude: @Html.DisplayFor(model => model.LatitudeLongitude)
+            </div>
+
+        </div>
+    </div>
+
+    <div class="form-group">
+       FlexDocs: @Html.DisplayFor(model => model.ChaveFlexDocs)
+    </div>
+
+    <div class="form-group">
+       FlexDocs: @Html.DisplayFor(model => model.ChaveFlexDocs)
+     </div>
+
+    <div class="form-group">
+       ChaveCSC: @Html.DisplayFor(model => model.ChaveCSC)
+     </div>
+
+    <div class="form-group">
+       Manifesto: @Html.DisplayFor(model => model.ChaveManifesto)
+    </div>
+    <hr />
+    <div class="form-group">
+        <a asp-action="Index" class="btn btn-light btn-sm">Retornar</a>
+    </div>
+
+
+</div>

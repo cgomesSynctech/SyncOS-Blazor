@@ -1,0 +1,127 @@
+﻿@model Modelos.Chamado
+
+@{
+    ViewData["Title"] = "Details";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<h2>Detalhe</h2>
+
+<div>
+    <h4>Chamado</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.DataAbertura)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.DataAbertura)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.DataAtendimento)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.DataAtendimento)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.DataFinalizacao)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.DataFinalizacao)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.AlegacaoCliente)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.AlegacaoCliente)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.AlegacaoTecnico)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.AlegacaoTecnico)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Resolucao)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Resolucao)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Interlocutor)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Interlocutor)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.IsSolucionado)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.IsSolucionado)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.IsImprocedente)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.IsImprocedente)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.ProtocoloAutorizacao)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.ProtocoloAutorizacao)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Cliente)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Cliente.Id)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Usuario)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Usuario.Email)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Tecnico)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Tecnico.Email)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Status)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Status.Id)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Prioridade)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Prioridade.Id)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Motivo)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Motivo.Descricao)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Modulo)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Modulo.Descricao)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Forma)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Forma.Id)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model.Id">Edit</a> |
+    <a asp-action="Index">Back to List</a>
+</div>

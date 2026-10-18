@@ -1,0 +1,96 @@
+﻿@model List<VMClienteProsp>
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+<head>
+  
+
+</head>
+<h2>Lista Prospecção <a asp-action="Create"><img src="~/img/ic_add.png" width="20" height="20" alt="ativar" style="margin-right:8px; vertical-align: top;" /></a></h2>
+<form method="get" class="mb-4">
+    <div class="form-actions no-color">
+        <p>
+            <input type="text" name="buscaRazao" value="@ViewBag.BuscaRazao" placeholder="Buscar por razão" />
+            <input type="submit" value="Pesquisa" class="btn btn-secondary bg-primary text-white" />
+            @* <div> *@
+                Setor :
+                <select id="setor" name="setor" asp-items="ViewBag.SetorId" onchange="selectStatus()"></select>
+                @* <select id="setor" name="setor" class="form-control text-truncate" style="max-width: 280px;" asp-items="ViewBag.SetorId" onchange="selectStatus()"></select> *@
+            @* </div> *@
+          
+        </p>
+    </div>
+</form>
+@foreach (var item in Model)
+{
+    <div class="card mb-4">
+        <div class="table table-responsive table-striped text-nowrap table-sm">
+            <span><strong>@item.SetorDescricao</strong></span>
+            <span>Página @item.PaginaAtual de @item.TotalPaginas</span>
+        </div>
+        <div class="card-body p-0">
+            <table id="mytable" class="table table-responsive table-striped text-nowrap table-sm">
+                <thead class="thead-light">
+                    <tr>
+                        <th>Razão</th>
+                        <th>Fantasia</th>
+                        <th>CPF/CNPJ</th>
+                        <th>Status</th>
+                        <th>Ação</th>
+                    </tr>
+                </thead>
+                <tbody>
+                    @foreach (var cliente in item.ClientesPaginados)
+                    {
+                        <tr>
+                            <td>@cliente.Razao</td>
+                            <td>@cliente.Fantasia</td>
+                            <td>@cliente.CPF_CNPJ</td>
+                            <td>@cliente.Status?.Descricao</td>
+                            @if (@cliente.Flag == 1)
+                            {
+                            <td><label>Prospecto Promovido </label> </td>                            
+                            }
+                            else
+                            {
+                            <td>
+                                <a asp-action="Index" asp-controller="ClientesProspHistorico" asp-route-clienteId="@cliente.Id"><img src="~/img/icons/essential-pack/folder-14.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>|
+                                <a asp-action="AlteraSetor" asp-controller="ClientesProsp" asp-route-clienteId="@cliente.Id"><img src="~/img/icons/essential-pack/fast-forward-1.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                                <a asp-action="AlteraStatus" asp-controller="ClientesProsp" asp-route-clienteId="@cliente.Id"><img src="~/img/icons/essential-pack/pin.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                                <a asp-action="Edit" asp-route-id="@cliente.Id"><img src="~/img/icons/essential-pack/edit.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                                <a asp-action="EfetivarVenda" asp-route-id="@cliente.Id"><img src="~/img/icons/essential-pack/like.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                                <a asp-action="Desisteancia" asp-controller="ClientesProspHistorico" asp-route-id="@cliente.Id"><img src="~/img/icons/essential-pack/dislike.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                            </td>
+                            }
+
+                        </tr>
+                    }
+                </tbody>
+            </table>
+        </div>
+        <div class="card-footer text-center">
+            @if (item.TotalPaginas > 1)
+            {
+                <nav>
+                    <ul class="pagination justify-content-center mb-0">
+                        @for (int i = 1; i <= item.TotalPaginas; i++)
+                        {
+                            <li class="page-item @(i == item.PaginaAtual ? "active" : "")">
+                                <a class="page-link" href="@Url.Action("Index", new { setor = item.SetorId, pagina = i })">@i</a>
+                            </li>
+                        }
+                    </ul>
+                </nav>
+            }
+        </div>
+    </div>
+}
+
+@section Scripts {
+    <script>
+                $(document).ready( function () {
+            $('#myTable').DataTable();
+        } );
+    </script>
+}

@@ -1,0 +1,52 @@
+﻿body, html {
+    margin: 0;
+    padding: 0;
+    height: 100%;
+    font-family: sans-serif;
+}
+
+.login_bg {
+    width: 32%;
+    height: 100%;
+    overflow: hidden;
+    position: absolute;
+    float: left;
+    background: url("../img/bg4.jpg");
+    background-position: center;
+    background-repeat: no-repeat;
+    background-size: cover;
+}
+
+.login {
+    position: fixed;
+    overflow: hidden;
+    width: 68%;
+    right: 0;
+    margin-top: 16px;
+    background-color: #f1f3f5;
+    height: 100%;
+    z-index: 1;
+}
+
+    .login form {
+        margin: 0px;
+    }
+
+.logo {
+    text-align: center;
+    margin-bottom: 28px;
+}
+
+.login h2 {
+    font-size: 30px;
+    margin: 8px 0;
+    color: var(--cyan-fill);
+}
+
+.login input {
+    margin-bottom: 8px;
+}
+
+.login p {
+    text-align: center;
+}

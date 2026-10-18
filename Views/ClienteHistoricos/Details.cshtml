@@ -1,0 +1,42 @@
+﻿@model Modelos.ClienteHistorico
+
+@{
+    ViewData["Title"] = "Details";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    var clienteId = int.Parse(ViewData["ClienteId"].ToString());
+}
+
+
+<div>
+    <h4>Histórico: @Html.DisplayFor(model => model.Cliente.Razao)</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            # Id
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Id)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Data)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Data)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Usuario)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Usuario.LoginName)
+        </dd>
+        <dt>
+            Histórico
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Historico)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Index" asp-route-clienteId="@clienteId" class="btn btn-light btn-sm">Retornar</a>
+</div>

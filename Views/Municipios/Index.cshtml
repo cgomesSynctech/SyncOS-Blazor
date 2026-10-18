@@ -1,0 +1,75 @@
+﻿@model X.PagedList.IPagedList<Modelos.Municipio>
+@using X.PagedList.Mvc.Core;
+@using X.PagedList.Web.Common;
+@{
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+<!DOCTYPE html>
+
+<h2>Lista Municipios.<a asp-action="Create"><img src="~/img/ic_add.png" width="20" height="20" alt="ativar" style="margin-right:8px; vertical-align: top;" /></a></h2>
+
+<form asp-action="Index" method="get">
+    <div class="form-actions no-color">
+        <p>
+            <input type="text" name="SearchString" placeholder="pesquisa pelo nome" value="@ViewData["CurrentFilter"]" />
+            <input type="submit" value="Pesquisa" class="btn btn-secondary bg-primary text-white" />
+            <a asp-action="Index" class="btn btn-secondary bg-primary text-white">Sem Filtro</a>
+        </p>
+    </div>
+</form>
+<table class="table table-responsive table-striped text-nowrap table-sm">
+    <thead>
+        <tr>
+            <th>
+                Código
+            </th>
+            <th>
+                Nome do Municipio
+            </th>
+            <th>
+                UF
+            </th>
+            <th>
+                <a asp-action="Create"><img src="~/img/icons/essential-pack/add-1.png" width="30" height="30" alt="Novo" style="margin-right:8px; vertical-align: top;" /></a>
+            </th>
+        </tr>
+    </thead>
+    <tbody>
+        @foreach (var item in Model)
+        {
+            <tr>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Id)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.Descricao)
+                </td>
+                <td>
+                    @Html.DisplayFor(modelItem => item.UF.Id)
+                </td>
+                <td>
+                    <a asp-action="Details" asp-route-id="@item.Id"><img src="~/img/icons/essential-pack/view.png" width="20" height="20" alt="Edite" style="margin-right:8px; vertical-align: top;" /></a> |
+                    <a asp-action="Edit" asp-route-id="@item.Id"><img src="~/img/icons/essential-pack/edit.png" width="20" height="20" alt="Edite" style="margin-right:8px; vertical-align: top;" /></a> |
+                    <a asp-action="Delete" asp-route-id="@item.Id"><img src="~/img/icons/essential-pack/delete-1.jpg" width="20" height="20" alt="Delete" style="margin-right:8px; vertical-align: top;" /></a>
+                </td>
+            </tr>
+        }
+    </tbody>
+</table>
+<div>
+    Page @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) of @Model.PageCount
+</div>
+
+@Html.PagedListPager(
+        Model,
+        pagina => Url.Action("Index", new { pagina}),
+        new PagedListRenderOptions
+        {
+        DisplayItemSliceAndTotal = false,
+        DisplayEllipsesWhenNotShowingAllPageNumbers = true,
+        ContainerDivClasses = new[] { "navigation" },
+        PageClasses = new[] { "page-link" },
+        LiElementClasses = new[] { "page-item" },
+        UlElementClasses = new[] { "pagination justify-content-left" }
+        }
+        )

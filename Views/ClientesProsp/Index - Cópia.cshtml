@@ -1,0 +1,166 @@
+﻿
+@using Services
+@using X.PagedList.Mvc.Core;
+@using X.PagedList.Web.Common;
+@* @model X.PagedList.IPagedList<Modelos.ClienteProsp> *@
+@model List<IGrouping<Modelos.Setor, Modelos.ClienteProsp>>
+@* @model X.PagedList.IPagedList<IGrouping<Modelos.Setor, Modelos.ClienteProsp>> *@
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    // var sort = @ViewData["NameSortParm"];
+    var setor = int.Parse(ViewData["Setor"].ToString());
+    var status = int.Parse(ViewData["status"].ToString());
+}
+
+
+<h2>Lista Prospecção <a asp-action="Create"><img src="~/img/ic_add.png" width="20" height="20" alt="ativar" style="margin-right:8px; vertical-align: top;" /></a></h2>
+<form asp-action="Index" method="get">
+    <div class="form-actions no-color">
+        <p>
+            <input type="text" name="Filtro" placeholder="consulta" value="@ViewData["Filtro"]" />
+            <input type="submit" value="Pesquisa" class="btn btn-secondary bg-primary text-white" />
+            <a asp-action="Index" asp-route-ativo=0 class="btn btn-secondary bg-primary text-white"> Sem Filtro </a>
+            <div class="row">
+                <span class="input-group-text"><strong>Setor:</strong> </span>
+                <div class="col-md-3">
+                    <select id="setor" name="setor" class="form-control text-truncate" style="max-width: 280px;" asp-items="ViewBag.SetorId" onchange="selectStatus()"></select>
+                </div>
+                <span class="input-group-text"><strong>Status:</strong> </span>
+                <div class="col-md-3">
+                    <select id="status" name="status" class="form-control text-truncate" style="max-width: 280px;" asp-items="ViewBag.StatuId" onchange="selectStatus()"></select>
+                </div>
+            </div>
+
+        </p>
+    </div>
+</form>
+@foreach (var grupo in Model)
+{
+    @* <h3>@grupo.Setor.Descricao</h3>
+    <table class="table table-responsive table-striped text-nowrap table-sm">
+        <thead>
+            <tr>
+                <th>
+                    Razão
+                </th>
+                <th>
+                    Fantasia
+                </th>
+                <th>
+                    CNPJ
+                </th>
+                <th>
+                    Contato
+                </th>
+                <th>
+                    Municipio
+                </th>
+                <th>
+                    Status
+                </th>
+                <th>
+                    Setor
+                </th>
+                <th style="text-align:right;">Ações</th>
+            </tr>
+        </thead> *@
+        <tbody>
+            @foreach (var item in grupo)
+            {
+                <tr>
+                    <td class="text-truncate" style="max-width: 200px;">
+                        @item.Razao
+                    </td>
+                    <td>
+                        @item.Fantasia
+                    </td>
+                    <td>
+                        @item.CPF_CNPJ
+                    </td>
+                    <td class="text-truncate" style="max-width: 150px;">
+                        @item.Contato
+                    </td>
+                    <td class="text-truncate" style="max-width: 150px;">
+                        @item.Municipio.Descricao
+                    </td>
+                    <td>
+                        @item.Status.Descricao
+                    </td>
+                    <td>
+                        @item.Setor.Descricao
+                    </td>
+
+                    <td>
+
+                        <a asp-action="Index" asp-controller="ClientesProspHistorico" asp-route-clienteId="@item.Id"><img src="~/img/icons/essential-pack/folder-14.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                        |  <a asp-action="AlteraSetor" asp-controller="ClientesProsp" asp-route-clienteId="@item.Id"><img src="~/img/icons/essential-pack/fast-forward-1.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                        <a asp-action="AlteraStatus" asp-controller="ClientesProsp" asp-route-clienteId="@item.Id"><img src="~/img/icons/essential-pack/pin.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                        @* | <a asp-action="Create" asp-controller="Chamados" asp-route-id="@item.Id"><img src="~/img/icons/essential-pack/plus.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a> *@
+                        <a asp-action="Edit" asp-route-id="@item.Id"><img src="~/img/icons/essential-pack/edit.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                    </td>
+
+
+                </tr>
+            }
+        </tbody>
+    @* </table> *@
+    }
+<div>
+    @* @Html.PagedListPager((PagedListDisplayMode)ViewBag.Paginacao, pagina => Url.Action("Index", new { pagina, setor = ViewData["Setor"], status = ViewData["status"] })) *@
+
+    @* Page @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) of @Model.PageCount *@
+</div>
+
+@* @Html.PagedListPager(
+        Model,
+        pagina => Url.Action("Index", new { pagina, setor, status }),
+        new PagedListRenderOptions
+    {
+        DisplayItemSliceAndTotal = false,
+        DisplayEllipsesWhenNotShowingAllPageNumbers = true,
+        ContainerDivClasses = new[] { "navigation" },
+        PageClasses = new[] { "page-link" },
+        LiElementClasses = new[] { "page-item" },
+        UlElementClasses = new[] { "pagination justify-content-left" }
+    }
+        ) *@
+
+
+
+<script>
+    function selectStatus() {
+        $('.pop-outer').fadeIn('slow');
+        var id = document.getElementById("status");
+        var setorId = document.getElementById("setor");
+        id.value = id.value.toUpperCase();
+        $.ajax({
+            type: "GET",
+            url: "/Desev/Index",
+            data: "pagina=0&status=" + id.value + "&" + setorId.value,
+            success: function (status) {
+                document.getElementById("chamado").submit();
+            },
+            error: function () {
+                alert("Erro ao selecionar status.");
+            }
+        });
+    }
+
+    function showModal() {
+        $('.pop-outer').fadeIn('slow');
+    }
+
+    function hideModal() {
+        $('.pop-outer').fadeOut('slow');
+    }
+
+    window.onload = function () {
+        hideModal();
+    }
+
+    $(document).ready(function () {
+
+    });
+
+</script>

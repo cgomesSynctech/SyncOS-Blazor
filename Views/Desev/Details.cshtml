@@ -1,0 +1,74 @@
+﻿@model Modelos.DesenvCard
+@{
+    ViewData["Title"] = "Details";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<h2>Visualização</h2>
+
+<div>
+    <h4>Solicitação de Desenvolvimento</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            Data : @Html.DisplayFor(model => model.Data)
+        </dt>
+        <dt>
+            Rotulo : @Html.DisplayFor(model => model.Rotulo)
+        </dt>
+        <dt>
+            Solicitante : @Html.DisplayFor(model => model.Usuario.LoginName)
+        </dt>
+        <dd>
+            Descricao :  @Html.DisplayFor(model => model.Descricao)
+        </dd>
+        <dd>
+            Detalhes : @Html.DisplayFor(model => model.Detalhes)
+        </dd>
+        <dd>
+            Observacao : @Html.DisplayFor(model => model.Observacao)
+        </dd>
+        <dd>
+            LinkBase : @Html.DisplayFor(model => model.LinkBase)
+        </dd>
+        <dd>
+            Arquivo :   @if (!string.IsNullOrEmpty(Model.Arquivo))
+            {
+                <a href="~/desenvcard/@Html.DisplayFor(model => model.Arquivo)" target="_blank">
+                    @Html.DisplayFor(model => model.Arquivo)
+                </a>
+            }
+            else
+            {
+                <span>Sem arquivo</span>
+            }
+        </dd>
+        Resposta do Desenvolvimento
+        <dt>
+            Solucao : @Html.DisplayFor(model => model.Solucao)
+        </dt>
+        <dt>
+            Resolucao : @Html.DisplayFor(model => model.Resolucao)
+        </dt>
+        <dt>
+            Versão Suapps : @Html.DisplayFor(model => model.VersaoSuapp)
+        </dt>
+        <dt>
+            Arquivo Solução : @if (!string.IsNullOrEmpty(Model.Arquivosolucao))
+            {
+                <a href="~/desenvcard/@Html.DisplayFor(model => model.Arquivosolucao)" target="_blank">
+                    @Html.DisplayFor(model => model.Arquivosolucao)
+                </a>
+            }
+            else
+            {
+                <span>Sem arquivo</span>
+            }
+        </dt>
+
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model.Id">Edit</a> |
+    <a asp-action="Index">Back to List</a>
+</div>

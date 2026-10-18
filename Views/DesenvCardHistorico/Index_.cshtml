@@ -1,0 +1,144 @@
+﻿@using Services
+@using X.PagedList.Mvc.Core;
+@using X.PagedList.Web.Common;
+@model X.PagedList.IPagedList<Modelos.DesenvCardHistorico>
+
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    var devcardId = int.Parse(ViewData["DesenvcardId"].ToString());
+    var rotulo = ViewData["RotuloCard"].ToString();
+}
+<!DOCTYPE html>
+<html>
+<head>
+    <meta name="viewport" content="width=device-width" />
+    <title>Index</title>
+</head>
+<body>
+    <h2>Histórico <a asp-action="Create" asp-route-desenvcardId="@devcardId"><img src="~/img/ic_add.png" width="20" height="20" alt="ativar" style="margin-right:8px; vertical-align: top;" /> </a></h2>
+
+    <h4>Rotulo: <b>@rotulo</b> </h4>
+    <hr />
+    <table class="table table-responsive table-striped text-nowrap table-sm">
+        <thead>
+            <tr>
+                <th>
+                    # Id
+                </th>
+                <th>
+                    Data
+                </th>
+                <th>
+                    Usuário
+                </th>
+                <th>
+                    Arquivo
+                </th>                
+                 <th>
+                    Descricao
+                </th>
+                <th>
+                    Respondido por
+                </th>
+                <th>
+                    Solucao
+                </th>
+                <th>
+                    Arquivo Solução
+                </th>
+                <th>
+                    Status
+                </th>                
+                <th>
+                    Ações
+                </th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in Model)
+            {                
+                <tr>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Id)
+                    </td>
+
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Data.ToString("dd/MM/yyyy"))
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Usuario.LoginName)
+                    </td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(item.Arquivo))
+                        {
+                            <a href="~/desenvcard/@item.Arquivo" target="_blank">
+                                @item.Arquivo
+                            </a>
+                        }
+                        else
+                        {
+                            <span>Sem arquivo</span>
+                        }
+
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.DesenvCard.Rotulo)
+                    </td>
+                    <td>
+                        @if (item.UsuarioResposta != null )
+                        {
+                            @Html.DisplayFor(modelItem => item.UsuarioResposta)
+                        }
+                        else
+                        {
+                            <span>Sem resposta</span>
+                        }
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Solucao)
+                    </td>
+                    <td>
+                        @if (!string.IsNullOrEmpty(item.Arquivosolucao))
+                        {
+                            <a href="~/desenvcard/@item.Arquivosolucao" target="_blank">
+                                @item.Arquivosolucao
+                            </a>
+                        }
+                        else
+                        {
+                            <span>Sem arquivo</span>
+                        }
+                    </td>
+                    <td style="text-align:center;">
+                        @Html.DisplayFor(modelItem => item.DesenvCardStatus.Descricao)
+                    </td>
+                    <td>
+                        <a asp-action="Details" asp-controller="DesenvCardHistorico" asp-route-id="@item.Id"><img src="~/img/icons/essential-pack/info.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                        <a asp-action="RespostaDesenv" asp-controller="DesenvCardHistorico" asp-route-id="@item.Id"><img src="~/img/icons/user-pack/user-9.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                    </td>
+                </tr>
+            }
+        </tbody>
+    </table>
+    <div>
+        Page @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) of @Model.PageCount
+    </div>
+
+    @Html.PagedListPager(
+            Model,
+            pagina => Url.Action("Index", new { pagina, desenvcardId = devcardId }),
+            new PagedListRenderOptions
+    {
+        DisplayItemSliceAndTotal = false,
+        DisplayEllipsesWhenNotShowingAllPageNumbers = true,
+        ContainerDivClasses = new[] { "navigation" },
+        PageClasses = new[] { "page-link" },
+        LiElementClasses = new[] { "page-item" },
+        UlElementClasses = new[] { "pagination justify-content-left" }
+    }
+            )
+
+    <a asp-action="Index" asp-controller="ClientesProsp" class="btn btn-light btn-sm">Lista Clientes</a>
+
+</body>
+</html>

@@ -1,0 +1,85 @@
+﻿@using System.Globalization;
+@model Modelos.ClienteProsp
+
+@{
+    ViewData["Title"] = "Edit";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<html lang="pt-br">
+<body>
+    <h2>Alterar Setor</h2>
+    <hr />
+    <div class="row">
+        <div class="col-md-6">
+            <form asp-action="AlteraSetor">
+                <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                <input type="hidden" asp-for="Id" />
+                <div class="form-group">
+                    <div class="row">
+                        <div class="col-md-4">
+                            <label class="control-label">Setor</label>
+                            <select asp-for="SetorId" class="form-control" asp-items="ViewBag.SetorId"></select>
+                        </div>
+                    </div>
+                </div>
+               
+                <div class="form-group">
+                    <div class="row">
+                        <div class="col-md-6">
+                            <input type="submit" value="Salvar" class="btn btn-success btn-sm" />
+                        </div>
+                        <div class="col-md-6">
+                            <a asp-action="Index" class="btn btn-light btn-sm">Retornar</a>
+                        </div>
+                    </div>
+                </div>
+            </form>
+        </div>
+    </div>
+</body>
+</html>
+@* @section Scripts {
+    <script>
+        function replaceValorContrato(){
+            var input = document.getElementById("valorcontrato");
+            var valor = input.value;
+            valor = valor.replace(".",",")
+            input.value = valor;
+        }
+        function replaceValorContratoBackup() {
+            var input = document.getElementById("valorcontratobackup");
+            var valor = input.value;
+            valor = valor.replace(".", ",")
+            input.value = valor;
+        }
+        $(document).ready(function () {
+            $("#uf").change(function () {
+                var uf = $(this).val();
+                $.ajax({
+                    type: "POST",
+                    url: "/Clientes/FiltraMunicipio",
+                    data: { uf: uf },
+                    dataType: "json",
+                    success: function (cities) {
+
+                        //console.log(cities);
+                        $("#municipio").empty();
+                        //$("#municipio").append("<option value='00000000'>Selecione um Municipio</option>");
+                        for (var i = 0; i < cities.length; i++) {
+                            $("#municipio").append("<option value=\'" + cities[i].id + "\'>" + cities[i].desc_UF + "</option>");
+                        }
+
+                    },
+                    error: function () {
+                        alert("Erro ao carregar cidades.");
+                    }
+                });
+            });
+        });
+
+
+    </script>
+
+}
+ *@

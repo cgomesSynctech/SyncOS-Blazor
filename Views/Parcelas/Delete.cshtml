@@ -1,0 +1,51 @@
+@model Modelos.Parcela
+
+@{
+    ViewData["Title"] = "Excluir Parcela";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<h2 class="text-danger">Excluir Parcela</h2>
+<h5>Tem certeza de que deseja excluir esta parcela?</h5>
+<hr />
+
+<div class="card col-md-8 p-3 shadow-sm border-danger">
+    <dl class="row mb-0">
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.NomeCliente)</dt>
+        <dd class="col-sm-9">@Html.DisplayFor(model => model.NomeCliente)</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.CPFCNPJ)</dt>
+        <dd class="col-sm-9">@Html.DisplayFor(model => model.CPFCNPJ)</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.DataVencimento)</dt>
+        <dd class="col-sm-9">@Model.DataVencimento.ToString("dd/MM/yyyy")</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Valor)</dt>
+        <dd class="col-sm-9">@Model.Valor.ToString("C")</dd>
+
+        <dt class="col-sm-3">@Html.DisplayNameFor(model => model.Status)</dt>
+        <dd class="col-sm-9">
+            @switch (Model.Status)
+            {
+                case "A":
+                    <span class="badge badge-warning text-dark">A Vencer</span>
+                    break;
+                case "V":
+                    <span class="badge badge-danger">Vencido</span>
+                    break;
+                case "L":
+                    <span class="badge badge-success">Liquidado</span>
+                    break;
+                default:
+                    <span class="badge badge-secondary">@Model.Status</span>
+                    break;
+            }
+        </dd>
+    </dl>
+</div>
+
+<form asp-action="Delete" class="mt-3">
+    <input type="hidden" asp-for="Id" />
+    <button type="submit" class="btn btn-danger"><i class="fas fa-trash"></i> Confirmar Exclusão</button>
+    <a asp-action="Index" class="btn btn-secondary">Cancelar</a>
+</form>

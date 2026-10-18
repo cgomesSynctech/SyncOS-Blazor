@@ -1,0 +1,29 @@
+##=== Visual Studio ===##
+## Pastas geradas automaticamente
+[Bb]in/
+[Oo]bj/
+.vs/
+.vscode/
+
+## Arquivos de usuário e cache
+*.user
+*.suo
+*.userosscache
+*.sln.docstates
+
+## Dependências (NuGet) // Usar o dotnet restore que será baixado todos os pacotes novamente.
+[Nn]u[Gg]et.exe
+[Nn]u[Gg]et.Config
+*.nupkg
+.nuget/
+packages/
+
+## Saídas de teste
+[Tt]est[Rr]esults/
+*.trx
+*.coverage
+
+##=== Extensões ===##
+## Ignorar tudo em subpastas bin/obj (proteção extra)
+**/[Bb]in/
+**/[Oo]bj/

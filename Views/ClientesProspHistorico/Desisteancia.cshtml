@@ -1,0 +1,93 @@
+﻿@model Modelos.ClienteProspHistorico
+
+@{
+    ViewData["Title"] = "Create";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    var razao = ViewData["Prosp"];
+}
+
+
+<h2> Historico de Desistencia</h2>
+<h4>Cliente: <b>@razao</b> </h4>
+
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <div class="form-group">
+            <form id="upload" name="upload" method="post" enctype="multipart/form-data">
+                <div class="form-group">
+                    <input type="file" name="file" value="Selecionar">
+                    <button type="submit">Enviar</button>
+                </div>
+
+            </form>
+        </div>
+        <form asp-action="Desisteancia" id="formPrincipal">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="ClienteProspId" value="@Model.ClienteProspId" />
+            <input type="hidden" asp-for="UsuarioId" value="@Model.UsuarioId" />
+            <input type="hidden" asp-for="Data" value="@Model.Data" />
+
+            <div class="col-md-6">
+                <label asp-for="Arquivo" class="control-label"></label>
+                <input asp-for="Arquivo" class="form-control" id="pct" readonly="true" />
+
+            </div>
+            <div class="form-group">
+                <div class="row">
+                    <div class="form-group">
+                        <label asp-for="Historico" class="control-label"></label>
+                        <textarea asp-for="Historico" type="text" class="form-control" style="width: 500px; height: 250px;" id="MessageInputField" autofocus></textarea>
+                        <span asp-validation-for="Historico" class="text-danger"></span>
+                    </div>
+                    <div class="form-group">
+                        <label asp-for="ClienteProspId" class="control-label"></label>
+                        <input asp-for="ClienteProspId" class="form-control" value="@Model.ClienteProspId" />
+                        <span asp-validation-for="ClienteProspId" class="text-danger"></span>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="submit" value="Salvar" class="btn btn-success btn-sm" />
+                    </div>
+                    <div class="col-md-6">
+                        <a asp-action="Index" class="btn btn-light btn-sm">Retornar</a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+
+@section Scripts {
+    @{
+        await Html.RenderPartialAsync("_ValidationScriptsPartial");
+    }
+    <script>
+        $(document).ready(function () {
+
+            $("#upload").submit(function (event) {
+                if (!this.checkValidity()) {
+                    return;
+                }
+                event.preventDefault();
+                var formData = new FormData(this);
+                $.ajax({
+                    url: "/Atualizacoes/UploadHistocioProsp",
+                    type: "POST",
+                    data: formData,
+                    processData: false,
+                    contentType: false,
+                    success: function (response) {
+                        $("#formPrincipal input[name='Arquivo']").val(response.success);
+                        alert("Arquivo " + response.success + ", enviado com sucesso!");
+                    }
+                });
+            });
+        });
+    </script>
+
+}

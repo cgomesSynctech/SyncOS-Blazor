@@ -1,0 +1,80 @@
+﻿@model Modelos.Chamado
+
+@{
+    ViewData["Title"] = "Create";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+
+<h4>Novo Chamado</h4>
+
+<hr />
+<div class="row">
+    <div class="col-md-4">
+        <form asp-action="Create">
+            <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+            <input type="hidden" asp-for="DataAbertura" />
+            <div class="form-group">
+                <label class="control-label">Cliente</label>
+                <select asp-for="ClienteId" class ="form-control" asp-items="ViewBag.ClienteId"></select>
+            </div>
+            <div class="form-group">
+                <div class="row">
+                    <div class="col-md-6">
+                        <label class="control-label">Modulo</label>
+                        <select asp-for="ChamadoModuloId" class="form-control" asp-items="ViewBag.ChamadoModuloId"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="control-label">Motivo</label>
+                        <select asp-for="ChamadoMotivoId" class="form-control" asp-items="ViewBag.ChamadoMotivoId"></select>
+                    </div>
+                </div>
+            </div>
+
+            <div class="form-group">
+                <div class="row">
+
+                    <div class="col-md-6">
+                        <label class="control-label">Forma</label>
+                        <select asp-for="ChamadoFormaId" class="form-control" asp-items="ViewBag.ChamadoFormaId"></select>
+                    </div>
+                    <div class="col-md-6">
+                        <label class="control-label">Prioridade</label>
+                        <select asp-for="ChamadoPrioridadeId" class="form-control" asp-items="ViewBag.ChamadoPrioridadeId"></select>
+                    </div>
+                </div>
+            </div>
+
+
+            <div class="form-group">
+                <label class="control-label">Alegação Cliente</label>
+                @*<input asp-for="AlegacaoCliente" class="form-control" />*@
+                <textarea asp-for="AlegacaoCliente" type="text" class="form-control" rows="5" id="MessageInputField" autofocus></textarea>
+                <span asp-validation-for="AlegacaoCliente" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label asp-for="Interlocutor" class="control-label"></label>
+                <input asp-for="Interlocutor" class="form-control" />
+                <span asp-validation-for="Interlocutor" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <label  class="control-label"># Protocolo</label>
+                <input asp-for="ProtocoloAutorizacao" class="form-control" />
+                <span asp-validation-for="ProtocoloAutorizacao" class="text-danger"></span>
+            </div>
+            <div class="form-group">
+                <div class="row">
+                    <div class="col-md-6">
+                        <input type="submit" value="Salvar" class="btn btn-success btn-sm" />
+                    </div>
+                    <div class="col-md-6">
+                        <a asp-action="Index" class="btn btn-light btn-sm">Retornar</a>
+                    </div>
+                </div>
+            </div>
+        </form>
+    </div>
+</div>
+@section Scripts {
+    @{await Html.RenderPartialAsync("_ValidationScriptsPartial");}
+}

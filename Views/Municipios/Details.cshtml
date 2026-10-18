@@ -1,0 +1,52 @@
+﻿@model Modelos.Municipio
+
+@{
+    ViewData["Title"] = "Details";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+<br />
+<h1>Detalhe do Municipio.</h1>
+<br />
+
+<div class="row">
+    <div class="col-md-4">
+        <hr />
+        <dl class="dl-horizontal">
+            <dt>
+                Código
+            </dt>
+            <dd>
+                @Html.DisplayFor(model => model.Id)
+            </dd>
+            <dt>
+                Descrição
+            </dt>
+            <dd>
+                @Html.DisplayFor(model => model.Descricao)
+            </dd>
+            <dt>
+                Ordem Visualização
+            </dt>
+            <dd>
+                @Html.DisplayFor(model => model.Ordem)
+            </dd>
+            <dt>
+                Estado
+            </dt>
+            <dd>
+                @Html.DisplayFor(model => model.UF.Descricao)
+            </dd>
+        </dl>
+
+        <div class="form-group">
+            <div class="row">
+                <div class="col-md-3">
+                    <a asp-action="Edit" asp-route-id="@Model.Id" class="btn btn-primary">Editar</a>
+                </div>
+                <div class="col-md-3">
+                    <a asp-action="Index" class="btn btn-primary"> Retornar</a>
+                </div>
+            </div>
+        </div>
+    </div>
+</div>

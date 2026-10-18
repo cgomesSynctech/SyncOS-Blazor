@@ -1,0 +1,481 @@
+﻿@{
+    Layout = "~/Views/Shared/_LayoutHome.cshtml";
+}
+
+<div>
+    <!-- PRELOADER
+    ================================================== -->
+    <div class="preloader">
+        <img src="assets/img/spinner.svg" alt="Loading..." class="preloader__spinner">
+    </div>
+
+    <!-- NAVBAR
+    ================================================== -->
+    <nav class="navbar navbar-fixed-top navbar-default">
+        <div class="container">
+            <!-- Brand name -->
+            <div class="navbar-header">
+                <button type="button" class="navbar-toggle collapsed" data-toggle="collapse" data-target="#navbar_main" aria-expanded="false">
+                    <span class="sr-only">Alternar Navegação</span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                    <span class="icon-bar"></span>
+                </button>
+            </div>
+
+            <!-- Links -->
+            <div class="collapse navbar-collapse" id="navbar_main">
+                <ul class="nav navbar-nav navbar-right">
+                    <li class="active"><a href="#section_banner">Seja Bem Vindo</a></li>
+                    <li><a asp-area="" asp-controller="TermoUso" asp-action="Index">Termo Uso</a></li>
+                    <li><a href="#section_features">Caracteristicas</a></li>
+                    <li><a href="#section_how-it-works">Como Funciona</a></li>
+                    <li><a href="#section_contact">Contato</a></li>
+                    @*<li><a asp-area="" asp-controller="Empresas" asp-action="Create">Criar Conta</a></li>*@
+                    <li><a asp-area="" asp-controller="Home" asp-action="Login">Acessar</a></li>
+                </ul>
+
+            </div><!-- /.navbar-collapse -->
+        </div><!-- /.container -->
+    </nav>
+
+    <!-- BANNER
+    ================================================== -->
+    <section class="section_banner" id="section_banner">
+
+        <!-- Images -->
+        <div class="banner__carousel__img"
+             data-images="assets/img/4.png, assets/img/3.png, assets/img/2.png">
+        </div>
+
+        <!-- Carousel -->
+        <div id="banner__carousel" class="banner__carousel carousel" data-ride="carousel">
+
+            <!-- Slides -->
+            <div class="carousel-inner" role="listbox">
+                <div class="item active">
+
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-sm-6">
+
+                                <h1 class="page-header text-white text-left animate-down animate-xs-step-0">
+                                    Controle <span>suas locações</span> <br>
+                                    de uma maneira fácil
+                                </h1>
+                                <p class="page-subheader text-white-muted text-left animate-down animate-xs-step-1">
+                                    Este site ajuda a você controlar suas locações de uma maneira simples e objetiva, crie uma conta e comece a usar agora.
+                                </p>
+                                <div class="text-left">
+                                    <a class="btn btn-primary animate-down animate-xs-step-2" asp-area="" asp-controller="Empresas" asp-action="Create">Criar Conta</a>
+
+                                    <a href="#section_features" class="btn btn-link animate-down animate-xs-step-2">
+                                        Descubra mais
+                                    </a>
+                                </div>
+
+                            </div>
+                            <div class="col-sm-6 hidden-xs">
+
+                                <div class="banner__iphone animate-left animate-xs-step-2">
+                                    <img src="assets/img/iphone_device_1.png" class="img-responsive" alt="...">
+                                </div>
+
+                            </div>
+                        </div> <!-- / .row -->
+                    </div> <!-- / .container -->
+
+                </div>
+                <div class="item">
+
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-sm-6">
+
+                                <h1 class="page-header text-white text-left animate-down animate-xs-step-0">
+                                    Veja aqui as<br> vantagens <span>de utilizar nosso sistema</span>
+                                </h1>
+                                <p class="page-subheader text-white-muted text-left animate-down animate-xs-step-1">
+                                    Administre, controle, agende e permita os usuários a reservar suas locações.
+                                </p>
+                                <div class="text-left">
+                                    <a asp-area="" asp-controller="Empresas" asp-action="Create" class="btn btn-primary animate-down animate-xs-step-2">
+                                        Criar Conta
+                                    </a>
+                                    <a href="#section_features" class="btn btn-link animate-down animate-xs-step-2">
+                                        Descubra mais
+                                    </a>
+                                </div>
+
+                            </div>
+                            <div class="col-sm-6 hidden-xs">
+
+                                <div class="banner__iphone animate-left animate-xs-step-2">
+                                    <img src="assets/img/iphone_device_2.png" class="img-responsive" alt="...">
+                                </div>
+
+                            </div>
+                        </div> <!-- / .row -->
+                    </div> <!-- / .container -->
+
+                </div>
+                <div class="item">
+
+                    <div class="container">
+                        <div class="row">
+                            <div class="col-sm-6">
+
+                                <h1 class="page-header text-white text-left animate-down animate-xs-step-0">
+                                    Tudo que você precisa <br> para <span>Gerenciar</span> seu negócio.
+                                </h1>
+                                <p class="page-subheader text-white-muted text-left animate-down animate-xs-step-1">
+                                    Controle desde as demandas de locação até o recebimento financeiro, cadastro de usuários e muito mais.
+                                </p>
+                                <div class="text-left">
+                                    <a asp-area="" asp-controller="Empresas" asp-action="Create" class="btn btn-primary animate-down animate-xs-step-2">
+                                        Criar Conta
+                                    </a>
+                                    <a href="#section_features" class="btn btn-link animate-down animate-xs-step-2">
+                                        Descubra mais
+                                    </a>
+                                </div>
+
+                            </div>
+                            <div class="col-sm-6 hidden-xs">
+
+                                <div class="banner__iphone animate-left animate-xs-step-2">
+                                    <img src="assets/img/iphone_device_3.png" class="img-responsive" alt="...">
+                                </div>
+
+                            </div>
+                        </div> <!-- / .row -->
+                    </div> <!-- / .container -->
+
+                </div>
+            </div>
+
+            <!-- Indicators -->
+            <ol class="carousel-indicators">
+                <li data-target="#banner__carousel" data-slide-to="0" class="active"></li>
+                <li data-target="#banner__carousel" data-slide-to="1"></li>
+                <li data-target="#banner__carousel" data-slide-to="2"></li>
+            </ol>
+
+            <!-- Controls -->
+            <a class="left carousel-control" href="#banner__carousel" role="button" data-slide="prev">
+                <span class="ion-android-arrow-back" aria-hidden="true"></span>
+                <span class="sr-only">Previous</span>
+            </a>
+            <a class="right carousel-control" href="#banner__carousel" role="button" data-slide="next">
+                <span class="ion-android-arrow-forward" aria-hidden="true"></span>
+                <span class="sr-only">Next</span>
+            </a>
+
+        </div> <!-- / .carousel -->
+
+    </section>
+
+    <!-- FEATURES
+    ================================================== -->
+    <section class="section_features" id="section_features">
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12">
+
+                    <h2 class="page-header text-center">
+                        Principais caracteristicas <span> do sistema</span>
+                    </h2>
+
+                    <p class="page-subheader text-center">
+                        Sistema pronto para controle de Ordem de Serviços.
+                    </p>
+
+                </div>
+            </div> <!-- / .row -->
+            <div class="row">
+                <div class="col-sm-4">
+
+                    <div class="features__item animate-sm-step-0" data-animate="animate-up">
+                        <div class="features__item__icon">
+                            <i class="ion-android-laptop"></i>
+                        </div>
+                        <h3 class="features__item__heading">
+                            Simples e intuitivo
+                        </h3>
+                        <div class="features__item__body">
+                            Fácil de usar, simples e intuitivo, Plataforma WEB, nosso sistema acesso online e controle de dados de qualquer lugar do mundo em tempo real.
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-sm-4">
+
+                    <div class="features__item animate-sm-step-1" data-animate="animate-up">
+                        <div class="features__item__icon">
+                            <i class="ion-android-options"></i>
+                        </div>
+                        <h3 class="features__item__heading">
+                            Opção de vários layouts
+                        </h3>
+                        <div class="features__item__body">
+                            Sisponibilizamos para você vários LayOuts.
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-sm-4">
+
+                    <div class="features__item animate-sm-step-2" data-animate="animate-up">
+                        <div class="features__item__icon">
+                            <i class="ion-android-color-palette"></i>
+                        </div>
+                        <h3 class="features__item__heading">
+                            Esquema de Cores
+                        </h3>
+                        <div class="features__item__body">
+                            Escolha o esquema de cores que melhor lhe agrada.
+                        </div>
+                    </div>
+
+                </div>
+            </div> <!-- / .row -->
+            <div class="row">
+                <div class="col-sm-4">
+
+                    <div class="features__item animate-sm-step-0" data-animate="animate-up">
+                        <div class="features__item__icon">
+                            <i class="ion-android-checkmark-circle"></i>
+                        </div>
+                        <h3 class="features__item__heading">
+                            Construído com MENOS
+                        </h3>
+                        <div class="features__item__body">
+                            A simplicidade do nosso sistema lhe entrega o que você precisa com o o mínimo necessário.
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-sm-4">
+
+                    <div class="features__item animate-sm-step-1" data-animate="animate-up">
+                        <div class="features__item__icon">
+                            <i class="ion-android-send"></i>
+                        </div>
+                        <h3 class="features__item__heading">
+                            Formulário de Contato
+                        </h3>
+                        <div class="features__item__body">
+                            Disponibilizamos para você um formulário para comunicação, seja um colaborador e nos ajude a melhorar.
+                        </div>
+                    </div>
+
+                </div>
+                <div class="col-sm-4">
+
+                    <div class="features__item animate-sm-step-2" data-animate="animate-up">
+                        <div class="features__item__icon">
+                            <i class="ion-android-mail"></i>
+                        </div>
+                        <h3 class="features__item__heading">
+                            Suporte por Email gratuíto.
+                        </h3>
+                        <div class="features__item__body">
+                            Nos envie um E-Mail com suas dúvidas e sugestões, responderemos o mais breve possível.
+                        </div>
+                    </div>
+
+                </div>
+            </div> <!-- / .row -->
+        </div> <!-- / .container -->
+    </section>
+
+
+    <!-- HOW IT WORKS
+    ================================================== -->
+    <section class="section_about" id="section_how-it-works">
+        <div class="container">
+            <div class="row row_centered">
+                <div class="col-sm-6 col-sm-push-6">
+
+                    <h2 class="page-header">
+                        Em que nosso <br> aplicativo <span>poderá te ajudar</span>
+                    </h2>
+
+                    <p>
+                        O objetivo principal é o controle de Order de Serviços;
+                    </p>
+                    <ul class="list-wf">
+                        <li>
+                            Controle de cadastro de clientes e/ou afiliados;
+                        </li>
+                        <li>
+                            cadastro de horários disponíveis;
+                        </li>
+                        <li>Administração do financeiro.</li>
+                    </ul>
+
+                </div>
+                <div class="col-sm-6 col-sm-pull-6">
+
+                    <div class="about__img about__img_iphone center-block">
+                        <img src="assets/img/iphone_device_1.png" class="img-responsive" alt=".">
+                    </div>
+
+                </div>
+            </div> <!-- / .row -->
+        </div> <!-- / .container -->
+    </section>
+
+
+    <!-- CONTACT
+    ================================================== -->
+    <section class="section_contact" id="section_contact">
+        <div class="container">
+            <div class="row">
+                <div class="col-xs-12">
+
+                    <h2 class="page-header text-center">
+                        Entre em contato <span>conosco</span>
+                    </h2>
+
+                    <p class="page-subheader text-center">
+                        Não hesite em nos enviar algumas linhas. Suporte 24/7 garantido.
+                    </p>
+
+                </div>
+            </div> <!-- / .row -->
+            <div class="row">
+                <div class="col-xs-12">
+
+                    <div class="contact__container">
+                        <div class="row">
+                            <div class="col-sm-8">
+
+                                <!-- Form -->
+                                <form class="contact__container__form" id="form_sendemail">
+
+                                    <!-- Header -->
+                                    <div class="form-group">
+                                        <h3>Nos envie uma mensagem.</h3>
+                                    </div>
+
+                                    <!-- Alert message -->
+                                    <div class="alert" id="form_message" role="alert"></div>
+
+                                    <!-- Email -->
+                                    <div class="form-group">
+                                        <label for="email" class="sr-only">Email address *</label>
+                                        <input type="email" name="email" class="form-control" id="email" placeholder="Digite seu E-Mail">
+                                        <span class="help-block"></span>
+                                    </div>
+
+                                    <!-- Name -->
+                                    <div class="form-group">
+                                        <label for="name" class="sr-only">Name *</label>
+                                        <input type="text" name="name" class="form-control" id="name" placeholder="Informe seu Nome">
+                                        <span class="help-block"></span>
+                                    </div>
+
+                                    <!-- Message -->
+                                    <div class="form-group">
+                                        <label for="message" class="sr-only">Message *</label>
+                                        <textarea name="message" class="form-control" id="message" placeholder="Escreva sua Mensagem"></textarea>
+                                        <span class="help-block"></span>
+                                    </div>
+
+                                    <!-- Submit -->
+                                    <button type="submit" class="btn btn-primary">
+                                        Send Message
+                                    </button>
+
+                                </form>
+
+                            </div>
+                            <div class="col-sm-4">
+
+                                <ul class="contact__container__info">
+                                    <li>
+                                        <h3>Informações de Contato</h3>
+                                    </li>
+                                    <li>
+                                        <i class="ion-android-pin"></i>
+                                        <p>
+                                            Entre em contatos <br>
+                                            e saiba mais.
+                                        </p>
+                                    </li>
+                                    <li>
+                                        <i class="ion-android-call"></i>
+                                        <p>
+                                            <a href="tel:83988025585">+55 (083) 9-8802-5585</a>
+                                        </p>
+                                    </li>
+                                    <li>
+                                        <i class="ion-android-mail"></i>
+                                        <p>
+                                            <a href="mailto:contato@synctech.com.br">contato@synctech.com.br</a>
+                                        </p>
+                                    </li>
+                                </ul>
+
+                            </div>
+                        </div> <!-- / .row -->
+                    </div>
+
+                </div>
+            </div> <!-- / .row -->
+        </div> <!-- / .container -->
+    </section>
+
+    <!-- FOOTER
+    ================================================== -->
+    <footer class="section_footer">
+        <div class="container">
+            <div class="row">
+                <div class="col-sm-9">
+
+                    <p class="footer__copyright">
+                        <span id="footer__year">2017</span> &copy; SyncOS <a href="http://www.synctech.com.br" target="_blank">Simpleqode.com</a> | Purchase via <a href="https://wrapbootstrap.com/theme/wolfram-multipurpose-one-page-template-WB0915821" target="_blank">Synctech</a>
+                    </p>
+
+                </div>
+                <div class="col-sm-3">
+
+                    <ul class="footer__social">
+
+                        <li>
+                            <a class="facebook" href="#">
+                                <i class="ion-social-facebook"></i>
+                            </a>
+                        </li>
+                        <li>
+                            <a class="pinterest" href="#">
+                                <i class="ion-social-pinterest"></i>
+                            </a>
+                        </li>
+                    </ul>
+
+                </div>
+            </div> <!-- / .row -->
+        </div> <!-- / .container -->
+    </footer>
+
+    <!-- JAVASCRIPT
+    ================================================== -->
+    <!-- JS Global -->
+    <script src="https://ajax.googleapis.com/ajax/libs/jquery/1.12.4/jquery.min.js"></script>
+    <script src="assets/bootstrap/js/bootstrap.min.js"></script>
+
+    <!-- JS Plugins -->
+    <script src="assets/plugins/smoothscroll/smoothscroll.min.js"></script>
+    <script src="assets/plugins/backstretch/jquery.backstretch.min.js"></script>
+    <script src="assets/plugins/contact-form/contact.js"></script>
+    <script src="assets/plugins/waypoints/jquery.waypoints.min.js"></script>
+    <script src="assets/plugins/owl-carousel/owl.carousel.min.js"></script>
+
+    <!-- JS Custom -->
+    <script src="assets/js/theme.js"></script>
+    <script src="assets/js/custom.js"></script>
+</div>
+
+

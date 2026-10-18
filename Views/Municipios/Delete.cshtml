@@ -1,0 +1,46 @@
+﻿@model Modelos.Municipio
+
+@{
+    ViewData["Title"] = "Delete";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<br />
+<h1>Municipio, Confirma exclusão?</h1>
+<br />
+
+<div>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            Descrição
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Descricao)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Ordem)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Ordem)
+        </dd>
+        <dt>
+            Estado
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.UF.Descricao)
+        </dd>
+    </dl>
+
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <div class="row">
+            <div class="col-md-3">
+                <input type="submit" value="Excluir" class="btn btn-primary" />
+            </div>
+            <div class="col-md-3">
+                <a asp-action="Index" class="btn btn-primary"> Retornar</a>
+            </div>
+        </div>
+    </form>
+</div>

@@ -1,0 +1,111 @@
+@using X.PagedList.Mvc.Core;
+@using X.PagedList.Web.Common;
+@model X.PagedList.IPagedList<Modelos.Parcela>
+
+@{
+    ViewData["Title"] = "Parcelas";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    var filtro = ViewData["Filtro"]?.ToString();
+    var status = ViewData["Status"]?.ToString();
+}
+
+<div class="d-flex justify-content-between align-items-center mb-2">
+    <h2>Lista de Parcelas <a asp-action="Create" class="btn btn-sm btn-primary ml-2"><i class="fas fa-plus"></i> Nova Parcela</a></h2>
+</div>
+
+<form asp-action="Index" method="get" class="mb-3">
+    <div class="form-row align-items-center">
+        <div class="col-auto">
+            <input type="text" name="filtro" class="form-control" placeholder="Buscar por cliente ou CPF/CNPJ" value="@filtro" />
+        </div>
+        <div class="col-auto">
+            <select name="status" class="form-control">
+                <option value="">-- Todos os Status --</option>
+                <option value="A" selected="@(status == "A")">A Vencer</option>
+                <option value="V" selected="@(status == "V")">Vencido</option>
+                <option value="L" selected="@(status == "L")">Liquidado</option>
+            </select>
+        </div>
+        <div class="col-auto">
+            <button type="submit" class="btn btn-primary"><i class="fas fa-search"></i> Pesquisar</button>
+            <a asp-action="Index" class="btn btn-secondary">Limpar</a>
+        </div>
+    </div>
+</form>
+
+<table class="table table-responsive-md table-striped table-hover text-nowrap table-sm">
+    <thead class="thead-dark">
+        <tr>
+            <th style="text-align:right;"># ID</th>
+            <th>Cliente</th>
+            <th>CPF/CNPJ</th>
+            <th>Telefone</th>
+            <th>Vencimento</th>
+            <th style="text-align:right;">Valor</th>
+            <th style="text-align:center;">Status</th>
+            <th style="text-align:right;">Ações</th>
+        </tr>
+    </thead>
+    <tbody>
+        @if (Model != null && Model.Any())
+        {
+            foreach (var item in Model)
+            {
+                <tr>
+                    <td style="text-align:right;">@item.Id</td>
+                    <td class="text-truncate" style="max-width: 200px;">@item.NomeCliente</td>
+                    <td>@item.CPFCNPJ</td>
+                    <td>@item.Fone</td>
+                    <td>@item.DataVencimento.ToString("dd/MM/yyyy")</td>
+                    <td style="text-align:right;">@item.Valor.ToString("C")</td>
+                    <td style="text-align:center;">
+                        @switch (item.Status)
+                        {
+                            case "A":
+                                <span class="badge badge-warning text-dark">A Vencer</span>
+                                break;
+                            case "V":
+                                <span class="badge badge-danger">Vencido</span>
+                                break;
+                            case "L":
+                                <span class="badge badge-success">Liquidado</span>
+                                break;
+                            default:
+                                <span class="badge badge-secondary">@item.Status</span>
+                                break;
+                        }
+                    </td>
+                    <td style="text-align:right;">
+                        <a asp-action="Edit" asp-route-id="@item.Id" class="btn btn-sm btn-outline-primary" title="Editar"><i class="fas fa-edit"></i></a>
+                        <a asp-action="Details" asp-route-id="@item.Id" class="btn btn-sm btn-outline-info" title="Detalhes"><i class="fas fa-info-circle"></i></a>
+                        <a asp-action="Delete" asp-route-id="@item.Id" class="btn btn-sm btn-outline-danger" title="Excluir"><i class="fas fa-trash"></i></a>
+                    </td>
+                </tr>
+            }
+        }
+        else
+        {
+            <tr>
+                <td colspan="8" class="text-center text-muted">Nenhuma parcela encontrada.</td>
+            </tr>
+        }
+    </tbody>
+</table>
+
+<div>
+    Página @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) de @Model.PageCount
+</div>
+
+@Html.PagedListPager(
+    Model,
+    pagina => Url.Action("Index", new { pagina, filtro = filtro, status = status }),
+    new PagedListRenderOptions
+    {
+        DisplayItemSliceAndTotal = false,
+        DisplayEllipsesWhenNotShowingAllPageNumbers = true,
+        ContainerDivClasses = new[] { "navigation" },
+        PageClasses = new[] { "page-link" },
+        LiElementClasses = new[] { "page-item" },
+        UlElementClasses = new[] { "pagination justify-content-left" }
+    }
+)

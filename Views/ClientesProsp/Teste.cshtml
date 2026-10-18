@@ -1,0 +1,81 @@
+﻿@model List<IGrouping<Modelos.Setor, Modelos.ClienteProsp>>
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    // var sort = @ViewData["NameSortParm"];
+    var setor = int.Parse(ViewData["Setor"].ToString());
+    var status = int.Parse(ViewData["status"].ToString());
+}
+
+@foreach (var grupo in Model)
+{
+    <h3>@grupo.Key</h3> <!-- Nome do Setor -->
+
+    <table class="table table-bordered table-striped">
+        <thead>
+            <tr>
+                <th>
+                    Razão
+                </th>
+                <th>
+                    Fantasia
+                </th>
+                <th>
+                    CNPJ
+                </th>
+                <th>
+                    Contato
+                </th>
+                <th>
+                    Municipio
+                </th>
+                <th>
+                    Status
+                </th>
+                <th>
+                    Setor
+                </th>
+                <th style="text-align:right;">Ações</th>
+            </tr>
+        </thead>
+        <tbody>
+            @foreach (var item in grupo)
+            {
+                <tr>
+                    <td class="text-truncate" style="max-width: 200px;">
+                        @Html.DisplayFor(modelItem => item.Razao)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Fantasia)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.CPF_CNPJ)
+                    </td>
+                    <td class="text-truncate" style="max-width: 150px;">
+                        @Html.DisplayFor(modelItem => item.Contato)
+                    </td>
+                    <td class="text-truncate" style="max-width: 150px;">
+                        @Html.DisplayFor(modelItem => item.Municipio.Descricao)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Status.Descricao)
+                    </td>
+                    <td>
+                        @Html.DisplayFor(modelItem => item.Setor.Descricao)
+                    </td>
+
+                    <td>
+
+                        <a asp-action="Index" asp-controller="ClientesProspHistorico" asp-route-clienteId="@item.Id"><img src="~/img/icons/essential-pack/folder-14.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                        |  <a asp-action="AlteraSetor" asp-controller="ClientesProsp" asp-route-clienteId="@item.Id"><img src="~/img/icons/essential-pack/fast-forward-1.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                        <a asp-action="AlteraStatus" asp-controller="ClientesProsp" asp-route-clienteId="@item.Id"><img src="~/img/icons/essential-pack/pin.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                        @* | <a asp-action="Create" asp-controller="Chamados" asp-route-id="@item.Id"><img src="~/img/icons/essential-pack/plus.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a> *@
+                        <a asp-action="Edit" asp-route-id="@item.Id"><img src="~/img/icons/essential-pack/edit.png" width="20" height="20" alt="desativar" style="margin-right:8px; vertical-align: top;" /></a>
+                    </td>
+
+
+                </tr>
+            }
+        </tbody>
+    </table>
+}

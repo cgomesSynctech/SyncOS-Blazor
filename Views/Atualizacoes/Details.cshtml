@@ -1,0 +1,79 @@
+﻿@model Modelos.Atualizacao
+
+@{
+    ViewData["Title"] = "Details";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<h2>Details</h2>
+
+<div>
+    <h4>Atualizacao</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.DataVersao)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.DataVersao)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Versao)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Versao)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.CNPJ)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.CNPJ)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.LeiaMe)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.LeiaMe)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Script)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Script)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Pacote)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Pacote)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.PathDescompactar)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.PathDescompactar)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.TipoAtualizacaoId)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.TipoAtualizacaoId)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Backup)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Backup)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Ativo)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Ativo)
+        </dd>
+    </dl>
+</div>
+<div>
+    <a asp-action="Edit" asp-route-id="@Model.Id">Edit</a> |
+    <a asp-action="Index">Back to List</a>
+</div>

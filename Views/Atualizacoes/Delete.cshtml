@@ -1,0 +1,89 @@
+﻿@model Modelos.Atualizacao
+
+@{
+    ViewData["Title"] = "Delete";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<h2>Apagar Atualização.</h2>
+
+<div>
+    <h4>Atualizacao</h4>
+    <hr />
+    <dl class="dl-horizontal">
+        <dt>
+            @Html.DisplayNameFor(model => model.DataVersao)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.DataVersao)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Versao)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Versao)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.CNPJ)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.CNPJ)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.LeiaMe)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.LeiaMe)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Script)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Script)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Pacote)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Pacote)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.PathDescompactar)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.PathDescompactar)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.TipoAtualizacaoId)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.TipoAtualizacaoId)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Backup)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Backup)
+        </dd>
+        <dt>
+            @Html.DisplayNameFor(model => model.Ativo)
+        </dt>
+        <dd>
+            @Html.DisplayFor(model => model.Ativo)
+        </dd>
+    </dl>
+    
+    <form asp-action="Delete">
+        <input type="hidden" asp-for="Id" />
+        <div class="form-group">
+            <div class="row">
+                <div class="col-md-6">
+                    <input type="submit" value="Delete" class="btn btn-success btn-sm" />
+                </div>
+                <div class="col-md-6">
+                    <a asp-action="Index" class="btn btn-light btn-sm">Retornar</a>
+                </div>
+            </div>
+        </div>
+    </form>
+</div>

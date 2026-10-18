@@ -1,0 +1,59 @@
+﻿@using System.Globalization;
+@model Modelos.Cliente
+
+@{
+    ViewData["Title"] = "Edit";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+    var token = ViewData["Token"];
+    var razao = ViewData["Razao"];
+    var fantasia = ViewData["Fantasia"];
+    var cnpj = ViewData["CNPJ"];
+
+
+    <html lang="pt-br">
+    <body>
+        <h2>Criar Cadastro para Base Controle</h2>
+        <hr />
+        <div class="row">
+
+            <div class="col-md-6">
+                <form asp-action="CriaClienteBaseControle">
+                    <div asp-validation-summary="ModelOnly" class="text-danger"></div>
+                    <input type="hidden" asp-for="Id" />
+                    <div class="form-group">
+                        <label class="control-label">Vc Esta presta a Criar o cadastro no SyncOs para a Base Controle do Cliente. 
+                        Lembrar de alterar o CNPJ na tabela Favorecidos para 99 ou 00 dependendo do real </label>
+                        <table>
+                            <thead>
+                            <th>
+                                @Model.Razao / 
+                            </th>
+                            <th>
+                                @Model.Fantasia / 
+                            </th>
+                            <th>
+                                @Model.CPF_CNPJ.
+                            </th>
+                            </thead>
+                        </table>
+
+
+                    </div>
+
+                    <div class="form-group">
+                        <div class="row">
+                            <div class="col-md-6">
+                                <input type="submit" text="Zerar Token" value="Salvar" class="btn btn-success btn-sm" />
+                            </div>
+                            <div class="col-md-6">
+                                <a asp-action="Index" class="btn btn-light btn-sm">Retornar</a>
+                            </div>
+                        </div>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </body>
+    </html>
+
+}

@@ -1,0 +1,73 @@
+﻿@using X.PagedList.Mvc.Core;
+@using X.PagedList.Web.Common;
+@model X.PagedList.IPagedList<Modelos.Usuario>
+
+@{
+    ViewData["Title"] = "Index";
+    Layout = "~/Views/Shared/_LayoutAdmin.cshtml";
+}
+
+<h2>Lista usuários <a asp-action="Create"><img src="~/img/ic_add.png" width="20" height="20" alt="ativar" style="margin-right:8px; vertical-align: top;" /></a></h2>
+
+
+<table class="table table-responsive table-striped text-nowrap table-sm">
+    <thead>
+        <tr>
+            <th>
+               Nome Usuário
+            </th>
+            <th>
+               Email
+            </th>
+            <th>
+                Perfil
+            </th>
+            <th>
+                Ativo
+            </th>
+
+            <th></th>
+        </tr>
+    </thead>
+    <tbody>
+@foreach (var item in Model) {
+        <tr>
+            <td>
+                @Html.DisplayFor(modelItem => item.LoginName)
+            </td>
+
+            <td>
+                @Html.DisplayFor(modelItem => item.Email)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Role)
+            </td>
+            <td>
+                @Html.DisplayFor(modelItem => item.Ativo)
+            </td>
+
+            <td>
+                <a asp-action="Edit" asp-route-id="@item.Id"><img src="~/img/icons/essential-pack/edit.png" width="20" height="20" alt="Edite" style="margin-right:8px; vertical-align: top;" /></a> |
+                <a asp-action="Delete" asp-route-id="@item.Id"><img src="~/img/icons/essential-pack/delete-1.jpg" width="20" height="20" alt="Delete" style="margin-right:8px; vertical-align: top;" /></a>
+            </td>
+        </tr>
+}
+    </tbody>
+</table>
+<div>
+    Page @(Model.PageCount < Model.PageNumber ? 0 : Model.PageNumber) of @Model.PageCount
+</div>
+
+@Html.PagedListPager(
+        Model,
+        pagina => Url.Action("Index", new { pagina}),
+        new PagedListRenderOptions
+        {
+        DisplayItemSliceAndTotal = false,
+        DisplayEllipsesWhenNotShowingAllPageNumbers = true,
+        ContainerDivClasses = new[] { "navigation" },
+        PageClasses = new[] { "page-link" },
+        LiElementClasses = new[] { "page-item" },
+        UlElementClasses = new[] { "pagination justify-content-left" }
+        }
+        )

@@ -1,0 +1,28 @@
+﻿
+<!DOCTYPE html>
+<html lang="pt-br">
+<head>
+    <meta charset="utf-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link rel="shortcut icon" href="assets/ico/favicon.ico">
+
+    <title>SyncOS</title>
+
+    <!-- CSS Plugins -->
+    <link rel="stylesheet" href="assets/plugins/ionicons/css/ionicons.min.css">
+    <link rel="stylesheet" href="assets/plugins/owl-carousel/assets/owl.carousel.min.css">
+    <link rel="stylesheet" href="assets/plugins/owl-carousel/assets/owl.theme.default.min.css">
+
+    <!-- CSS Global -->
+    <link rel="stylesheet" href="assets/css/theme.css">
+</head>
+<body>
+    @RenderBody()
+    <script src="~/lib/jquery/dist/jquery.min.js"></script>
+    <script src="~/lib/bootstrap/dist/js/bootstrap.bundle.min.js"></script>
+    <script src="~/js/site.js" asp-append-version="true"></script>
+    @await Component.InvokeAsync("Notyf")
+    @await RenderSectionAsync("Scripts", required: false)
+</body>
+</html>
