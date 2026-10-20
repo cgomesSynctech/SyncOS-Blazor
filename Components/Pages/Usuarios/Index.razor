@@ -1,0 +1,306 @@
+@page "/usuarios"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject AuthService Auth
+
+<PageTitle>Usuários do Sistema - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+            <MudIcon Icon="@Icons.Material.Filled.ManageAccounts" Class="mr-2" Color="Color.Primary" />
+            Gestão de Usuários
+        </MudText>
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+            Controle de acessos, perfis e credenciais dos colaboradores
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.LockReset" Href="/usuarios/alterar-senha">
+            Minha Senha
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" Href="/usuarios/novo">
+            Novo Usuário
+        </MudButton>
+    </div>
+</div>
+
+<MudCard Elevation="2" Class="mb-4">
+    <MudCardContent>
+        <MudGrid Spacing="2" Class="align-center">
+            <MudItem xs="12" md="5">
+                <MudTextField @bind-Value="searchString"
+                              Placeholder="Pesquisar por nome ou e-mail..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="CarregarUsuarios"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Clearable="true"
+                              OnClearButtonClick="LimparBusca" />
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="int" Value="@perfilFiltro" ValueChanged="OnPerfilChanged" Label="Perfil de Acesso" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                    <MudSelectItem Value="0">Todos os Perfis</MudSelectItem>
+                    @foreach (var p in perfis)
+                    {
+                        <MudSelectItem Value="@p.Id">@p.Descricao</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="2">
+                <MudSelect T="int" Value="@statusFiltro" ValueChanged="OnStatusChanged" Label="Situação" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                    <MudSelectItem Value="0">Todos</MudSelectItem>
+                    <MudSelectItem Value="1">Ativos</MudSelectItem>
+                    <MudSelectItem Value="2">Inativos</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+            <MudItem xs="12" md="2" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CarregarUsuarios">
+                    Atualizar
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+<MudTable Items="@usuariosFiltrados" Hover="true" Striped="true" Elevation="2" Loading="@loading" LoadingProgressColor="Color.Primary" RowsPerPage="15">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Nome de Login</MudTh>
+        <MudTh>E-mail</MudTh>
+        <MudTh>Perfil / Cargo</MudTh>
+        <MudTh Style="text-align: center;">Situação</MudTh>
+        <MudTh Style="text-align: right;">Ações</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID">
+            <MudText Typo="Typo.body2" Style="font-weight: 600;">#@context.Id</MudText>
+        </MudTd>
+        <MudTd DataLabel="Nome de Login">
+            <div class="d-flex align-center">
+                <MudAvatar Color="@GetAvatarColor(context.PerfilId)" Size="Size.Small" Class="mr-2">
+                    @(string.IsNullOrEmpty(context.LoginName) ? "?" : context.LoginName[0].ToString().ToUpper())
+                </MudAvatar>
+                <div>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.LoginName</MudText>
+                    @if (context.Id == Auth.CurrentUser?.Id)
+                    {
+                        <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Text" Class="pa-0 ma-0" Style="font-size: 0.7rem;">(Você)</MudChip>
+                    }
+                </div>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="E-mail">
+            <MudText Typo="Typo.body2">@context.Email</MudText>
+        </MudTd>
+        <MudTd DataLabel="Perfil / Cargo">
+            <MudChip T="string" Color="@GetAvatarColor(context.PerfilId)" Variant="Variant.Outlined" Size="Size.Small">
+                @GetPerfilNome(context.PerfilId)
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Situação" Style="text-align: center;">
+            @if (context.Ativo)
+            {
+                <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">Ativo</MudChip>
+            }
+            else
+            {
+                <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Filled">Inativo</MudChip>
+            }
+        </MudTd>
+        <MudTd DataLabel="Ações" Style="text-align: right;">
+            <MudTooltip Text="Editar Usuário">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" Href="@($"/usuarios/editar/{context.Id}")" />
+            </MudTooltip>
+            <MudTooltip Text="Redefinir Senha para 123">
+                <MudIconButton Icon="@Icons.Material.Filled.LockReset" Color="Color.Warning" Size="Size.Small" OnClick="@(() => RedefinirSenha(context))" />
+            </MudTooltip>
+            @if (context.Id != Auth.CurrentUser?.Id)
+            {
+                <MudTooltip Text="Excluir Usuário">
+                    <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarExclusao(context))" />
+                </MudTooltip>
+            }
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Itens por página:" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private bool loading = true;
+    private List<Usuario> todosUsuarios = new();
+    private List<Usuario> usuariosFiltrados = new();
+    private List<UsuarioPerfil> perfis = new();
+
+    private string searchString = "";
+    private int perfilFiltro = 0;
+    private int statusFiltro = 0; // 0=todos, 1=ativos, 2=inativos
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarPerfis();
+        await CarregarUsuarios();
+    }
+
+    private async Task CarregarPerfis()
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            perfis = await ctx.Perfis.AsNoTracking().OrderBy(p => p.Id).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar perfis: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CarregarUsuarios()
+    {
+        loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            todosUsuarios = await ctx.Usuarios.AsNoTracking().OrderBy(u => u.LoginName).ToListAsync();
+            AplicarFiltros();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar usuários: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void AplicarFiltros()
+    {
+        var query = todosUsuarios.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            var termo = searchString.Trim().ToLower();
+            query = query.Where(u => (u.LoginName != null && u.LoginName.ToLower().Contains(termo)) ||
+                                     (u.Email != null && u.Email.ToLower().Contains(termo)));
+        }
+
+        if (perfilFiltro > 0)
+        {
+            query = query.Where(u => u.PerfilId == perfilFiltro);
+        }
+
+        if (statusFiltro == 1)
+        {
+            query = query.Where(u => u.Ativo);
+        }
+        else if (statusFiltro == 2)
+        {
+            query = query.Where(u => !u.Ativo);
+        }
+
+        usuariosFiltrados = query.ToList();
+    }
+
+    private void OnPerfilChanged(int val)
+    {
+        perfilFiltro = val;
+        AplicarFiltros();
+    }
+
+    private void OnStatusChanged(int val)
+    {
+        statusFiltro = val;
+        AplicarFiltros();
+    }
+
+    private void LimparBusca()
+    {
+        searchString = "";
+        AplicarFiltros();
+    }
+
+    private string GetPerfilNome(int perfilId)
+    {
+        var p = perfis.FirstOrDefault(x => x.Id == perfilId);
+        return p?.Descricao ?? (perfilId switch
+        {
+            1 => "Administrador",
+            2 => "Financeiro",
+            3 => "Suporte",
+            4 => "Visitante",
+            _ => "Usuário"
+        });
+    }
+
+    private Color GetAvatarColor(int perfilId) => perfilId switch
+    {
+        1 => Color.Primary,
+        2 => Color.Success,
+        3 => Color.Info,
+        _ => Color.Secondary
+    };
+
+    private async Task RedefinirSenha(Usuario usr)
+    {
+        bool? confirmar = await DialogService.ShowMessageBoxAsync(
+            "Redefinir Senha",
+            $"Deseja redefinir a senha do usuário '{usr.LoginName}' para o padrão '123'?",
+            yesText: "Sim, Redefinir", cancelText: "Cancelar");
+
+        if (confirmar == true)
+        {
+            try
+            {
+                using var ctx = await DbFactory.CreateDbContextAsync();
+                var dbUser = await ctx.Usuarios.FindAsync(usr.Id);
+                if (dbUser != null)
+                {
+                    dbUser.LoginPass = "123";
+                    dbUser.LoginPass = ToPassWord.Get(dbUser);
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add($"Senha de '{usr.LoginName}' redefinida com sucesso para '123'!", Severity.Success);
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Erro ao redefinir senha: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ConfirmarExclusao(Usuario usr)
+    {
+        bool? confirmar = await DialogService.ShowMessageBoxAsync(
+            "Excluir Usuário",
+            $"Atenção! Deseja realmente excluir o usuário '{usr.LoginName}' ({usr.Email})?",
+            yesText: "Excluir", cancelText: "Cancelar");
+
+        if (confirmar == true)
+        {
+            try
+            {
+                using var ctx = await DbFactory.CreateDbContextAsync();
+                var dbUser = await ctx.Usuarios.FindAsync(usr.Id);
+                if (dbUser != null)
+                {
+                    ctx.Usuarios.Remove(dbUser);
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add($"Usuário '{usr.LoginName}' excluído com sucesso!", Severity.Success);
+                    await CarregarUsuarios();
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Erro ao excluir usuário: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

@@ -1,0 +1,268 @@
+@page "/atualizacoes"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Atualizações de Sistema - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+            <MudIcon Icon="@Icons.Material.Filled.SystemUpdate" Class="mr-2" Color="Color.Primary" />
+            Atualizações & Releases
+        </MudText>
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+            Gestão de pacotes, scripts de banco, notas de versão (LeiaMe) e releases para clientes
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="/atualizacoes/novo">
+            Nova Atualização
+        </MudButton>
+    </div>
+</div>
+
+<!-- Filtros -->
+<MudCard Elevation="2" Class="mb-4">
+    <MudCardContent>
+        <MudGrid Spacing="2" Class="align-center">
+            <MudItem xs="12" md="5">
+                <MudTextField @bind-Value="searchString"
+                              Placeholder="Pesquisar por versão, CNPJ ou conteúdo do LeiaMe..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="CarregarAtualizacoes"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Clearable="true"
+                              OnClearButtonClick="LimparBusca" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="4">
+                <MudSelect T="int" Value="@tipoAppFiltro" ValueChanged="OnTipoAppChanged" Label="Tipo de Aplicativo" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                    <MudSelectItem Value="0">Todos os Tipos</MudSelectItem>
+                    @foreach (var t in tiposApp)
+                    {
+                        <MudSelectItem Value="@t.Id">@t.Descricao</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CarregarAtualizacoes">
+                    Atualizar
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+<!-- Tabela de Atualizações -->
+<MudTable Items="@atualizacoesFiltradas" Hover="true" Striped="true" Elevation="2" Loading="@loading" LoadingProgressColor="Color.Primary" RowsPerPage="15">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Versão</MudTh>
+        <MudTh>Tipo de App</MudTh>
+        <MudTh>Data da Versão</MudTh>
+        <MudTh>CNPJ / Alvo</MudTh>
+        <MudTh Style="text-align: center;">Backup</MudTh>
+        <MudTh Style="text-align: center;">Status no App</MudTh>
+        <MudTh Style="text-align: right;">Ações</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID">
+            <MudText Typo="Typo.body2" Style="font-weight: 700;">#@context.Id</MudText>
+        </MudTd>
+        <MudTd DataLabel="Versão">
+            <div class="d-flex align-center">
+                <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled" Class="mr-2">
+                    v@(context.Versao)
+                </MudChip>
+                @if (!string.IsNullOrWhiteSpace(context.Pacote))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Pacote</MudText>
+                }
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Tipo de App">
+            <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Outlined">
+                @(context.TiposAPP?.Descricao ?? "Geral")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Data da Versão">
+            <MudText Typo="Typo.body2">@context.DataVersao.ToString("dd/MM/yyyy")</MudText>
+        </MudTd>
+        <MudTd DataLabel="CNPJ / Alvo">
+            <MudText Typo="Typo.body2">
+                @(string.IsNullOrEmpty(context.CNPJ) || context.CNPJ == "99999999999999" ? "Todos os Clientes" : context.CNPJ)
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="Backup" Style="text-align: center;">
+            @if (context.Backup == "S")
+            {
+                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" Title="Exige Backup" />
+            }
+            else
+            {
+                <MudIcon Icon="@Icons.Material.Filled.RemoveCircleOutline" Color="Color.Secondary" Size="Size.Small" Title="Sem Backup Obrigatório" />
+            }
+        </MudTd>
+        <MudTd DataLabel="Status no App" Style="text-align: center;">
+            <MudTooltip Text="@(context.Ativo == "S" ? "Atualização ATIVA para o aplicativo que vai executar" : "Atualização INATIVA (bloqueada para o aplicativo)")">
+                @if (context.Ativo == "S")
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled">Ativa</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Default" Size="Size.Small" Variant="Variant.Filled">Inativa</MudChip>
+                }
+            </MudTooltip>
+        </MudTd>
+        <MudTd DataLabel="Ações" Style="text-align: right;">
+            @if (!string.IsNullOrWhiteSpace(context.LeiaMe))
+            {
+                <MudTooltip Text="Ver LeiaMe / Notas">
+                    <MudIconButton Icon="@Icons.Material.Filled.Article" Color="Color.Info" Size="Size.Small" OnClick="@(() => ExibirLeiaMe(context))" />
+                </MudTooltip>
+            }
+            <MudTooltip Text="Editar Atualização">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" Href="@($"/atualizacoes/editar/{context.Id}")" />
+            </MudTooltip>
+            <MudTooltip Text="Excluir Atualização">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarExclusao(context))" />
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Itens por página:" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private bool loading = true;
+    private List<Atualizacao> todasAtualizacoes = new();
+    private List<Atualizacao> atualizacoesFiltradas = new();
+    private List<TipoAtualizacao> tiposApp = new();
+
+    private string searchString = "";
+    private int tipoAppFiltro = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarTiposApp();
+        await CarregarAtualizacoes();
+    }
+
+    private async Task CarregarTiposApp()
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            tiposApp = await ctx.TiposAPP.AsNoTracking().OrderBy(t => t.Descricao).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar tipos de app: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CarregarAtualizacoes()
+    {
+        loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            todasAtualizacoes = await ctx.Atualizacoes
+                .Include(a => a.TiposAPP)
+                .AsNoTracking()
+                .OrderByDescending(a => a.Id)
+                .ToListAsync();
+
+            AplicarFiltros();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar atualizações: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void AplicarFiltros()
+    {
+        var query = todasAtualizacoes.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            var termo = searchString.Trim().ToLower();
+            query = query.Where(a =>
+                (a.Versao != null && a.Versao.ToLower().Contains(termo)) ||
+                (a.CNPJ != null && a.CNPJ.Contains(termo)) ||
+                (a.LeiaMe != null && a.LeiaMe.ToLower().Contains(termo)) ||
+                (a.Pacote != null && a.Pacote.ToLower().Contains(termo)) ||
+                (a.Id.ToString() == termo)
+            );
+        }
+
+        if (tipoAppFiltro > 0)
+        {
+            query = query.Where(a => a.TipoAtualizacaoId == tipoAppFiltro);
+        }
+
+        atualizacoesFiltradas = query.ToList();
+    }
+
+    private void OnTipoAppChanged(int val)
+    {
+        tipoAppFiltro = val;
+        AplicarFiltros();
+    }
+
+    private void LimparBusca()
+    {
+        searchString = "";
+        AplicarFiltros();
+    }
+
+    private async Task ExibirLeiaMe(Atualizacao atu)
+    {
+        await DialogService.ShowMessageBoxAsync(
+            $"Notas da Versão v{atu.Versao}",
+            (MarkupString)$"<pre style='font-family: inherit; white-space: pre-wrap;'>{System.Net.WebUtility.HtmlEncode(atu.LeiaMe)}</pre>",
+            yesText: "Fechar");
+    }
+
+    private async Task ConfirmarExclusao(Atualizacao atu)
+    {
+        bool? confirmar = await DialogService.ShowMessageBoxAsync(
+            "Excluir Atualização",
+            $"Deseja realmente remover o registro da versão v{atu.Versao} (ID #{atu.Id})?",
+            yesText: "Excluir", cancelText: "Cancelar");
+
+        if (confirmar == true)
+        {
+            try
+            {
+                using var ctx = await DbFactory.CreateDbContextAsync();
+                var dbAtu = await ctx.Atualizacoes.FindAsync(atu.Id);
+                if (dbAtu != null)
+                {
+                    ctx.Atualizacoes.Remove(dbAtu);
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add($"Atualização v{atu.Versao} removida com sucesso!", Severity.Success);
+                    await CarregarAtualizacoes();
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Erro ao excluir atualização: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

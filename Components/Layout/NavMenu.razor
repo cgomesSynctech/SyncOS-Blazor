@@ -1,0 +1,35 @@
+<MudNavMenu Color="Color.Primary" Bordered="true">
+    <div class="pa-4 d-flex align-center">
+        <MudIcon Icon="@Icons.Material.Filled.Terminal" Color="Color.Primary" Size="Size.Large" Class="mr-2" />
+        <div>
+            <MudText Typo="Typo.subtitle1" Style="font-weight: 700; line-height: 1.1;">SyncOS</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">Gestão & Serviços</MudText>
+        </div>
+    </div>
+
+    <MudDivider Class="mb-2" />
+
+    <MudNavLink Href="" Match="NavLinkMatch.All" Icon="@Icons.Material.Filled.Dashboard">Painel / Dashboard</MudNavLink>
+
+    <MudNavGroup Title="Financeiro" Icon="@Icons.Material.Filled.AttachMoney" Expanded="true">
+        <MudNavLink Href="parcelas" Icon="@Icons.Material.Filled.ReceiptLong">Parcelas</MudNavLink>
+        <MudNavLink Href="parcelas/gerador" Icon="@Icons.Material.Filled.Bolt">Geração em Lote</MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Atendimento & Vendas" Icon="@Icons.Material.Filled.HeadsetMic" Expanded="true">
+        <MudNavLink Href="clientes" Icon="@Icons.Material.Filled.People">Clientes</MudNavLink>
+        <MudNavLink Href="chamados" Icon="@Icons.Material.Filled.ConfirmationNumber">Chamados</MudNavLink>
+        <MudNavLink Href="prospectos" Icon="@Icons.Material.Filled.FilterAlt">Prospectos (Funil)</MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Engenharia & TI" Icon="@Icons.Material.Filled.Code" Expanded="true">
+        <MudNavLink Href="desenvolvimento" Icon="@Icons.Material.Filled.DeveloperBoard">Demandas Dev</MudNavLink>
+        <MudNavLink Href="atualizacoes" Icon="@Icons.Material.Filled.SystemUpdate">Atualizações</MudNavLink>
+    </MudNavGroup>
+
+    <MudNavGroup Title="Cadastros & Sistema" Icon="@Icons.Material.Filled.AdminPanelSettings" Expanded="false">
+        <MudNavLink Href="usuarios" Icon="@Icons.Material.Filled.ManageAccounts">Usuários</MudNavLink>
+        <MudNavLink Href="municipios" Icon="@Icons.Material.Filled.LocationCity">Municípios (IBGE)</MudNavLink>
+        <MudNavLink Href="termos-de-uso" Icon="@Icons.Material.Filled.Gavel">Termos de Uso</MudNavLink>
+    </MudNavGroup>
+</MudNavMenu>

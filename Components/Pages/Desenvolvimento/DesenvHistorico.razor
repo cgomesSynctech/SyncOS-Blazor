@@ -1,0 +1,207 @@
+@page "/desenvolvimento/historico/{Id:int}"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>Histórico de Desenvolvimento - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0 mb-2" />
+        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+            <MudIcon Icon="@Icons.Material.Filled.History" Class="mr-2" Color="Color.Primary" />
+            Histórico: @(card?.Rotulo ?? $"Card #{Id}")
+        </MudText>
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+            Linha do tempo cronológica com eventos, testes e alterações técnicas
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/desenvolvimento">
+            Voltar aos Cards
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddComment" OnClick="AbrirNovoHistorico">
+            Nova Anotação
+        </MudButton>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else if (card == null)
+{
+    <MudAlert Severity="Severity.Error">Card de desenvolvimento não encontrado.</MudAlert>
+}
+else
+{
+    <!-- Informações Resumidas do Card -->
+    <MudCard Elevation="2" Class="mb-4">
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">MÓDULO</MudText>
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@(card.ChamadoModulo?.Descricao ?? "Geral")</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">STATUS ATUAL</MudText>
+                    <div>
+                        <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled" Size="Size.Small">
+                            @(card.DesenvCardStatus?.Descricao ?? "Em Aberto")
+                        </MudChip>
+                    </div>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">CLIENTE VINCULADO</MudText>
+                    <MudText Typo="Typo.body2">@(string.IsNullOrEmpty(card.ClienteNome) ? "Não Informado" : card.ClienteNome)</MudText>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">RESPONSÁVEL / DATA</MudText>
+                    <MudText Typo="Typo.body2">@(card.Usuario?.LoginName ?? "Sistema") em @card.Data.ToString("dd/MM/yyyy HH:mm")</MudText>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+
+    <!-- Linha do Tempo -->
+    @if (historicos.Count == 0)
+    {
+        <MudPaper Elevation="1" Class="pa-8 text-center">
+            <MudIcon Icon="@Icons.Material.Filled.HistoryToggleOff" Size="Size.Large" Color="Color.Secondary" Class="mb-2" />
+            <MudText Typo="Typo.h6" Color="Color.Secondary">Nenhum evento registrado ainda.</MudText>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddComment" OnClick="AbrirNovoHistorico" Class="mt-3">
+                Adicionar Primeiro Registro
+            </MudButton>
+        </MudPaper>
+    }
+    else
+    {
+        <MudTimeline TimelinePosition="TimelinePosition.Start">
+            @foreach (var hist in historicos)
+            {
+                <MudTimelineItem Color="Color.Primary" Size="Size.Small">
+                    <ItemOpposite>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            @hist.Data.ToString("dd/MM/yyyy HH:mm")
+                        </MudText>
+                    </ItemOpposite>
+                    <ItemContent>
+                        <MudCard Elevation="1" Class="pa-3 mb-2 rounded border">
+                            <div class="d-flex justify-space-between align-center mb-1">
+                                <MudText Typo="Typo.subtitle2" Style="font-weight: 700;" Color="Color.Primary">
+                                    @hist.Descricao
+                                </MudText>
+                                <MudChip T="string" Size="Size.Small" Color="Color.Info" Variant="Variant.Outlined">
+                                    @(hist.Usuario?.LoginName ?? "Sistema")
+                                </MudChip>
+                            </div>
+
+                            @if (!string.IsNullOrWhiteSpace(hist.Detalhes))
+                            {
+                                <MudText Typo="Typo.body2" Class="mb-2" Style="white-space: pre-wrap;">
+                                    @hist.Detalhes
+                                </MudText>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(hist.Observacao))
+                            {
+                                <MudAlert Severity="Severity.Normal" Dense="true" Class="my-1">
+                                    <b>Obs:</b> @hist.Observacao
+                                </MudAlert>
+                            }
+
+                            @if (!string.IsNullOrWhiteSpace(hist.LinkBase))
+                            {
+                                <div class="mt-2">
+                                    <MudLink Href="@hist.LinkBase" Target="_blank" Typo="Typo.caption" Underline="Underline.Always">
+                                        <MudIcon Icon="@Icons.Material.Filled.Launch" Size="Size.Small" Class="mr-1" />
+                                        @hist.LinkBase
+                                    </MudLink>
+                                </div>
+                            }
+                        </MudCard>
+                    </ItemContent>
+                </MudTimelineItem>
+            }
+        </MudTimeline>
+    }
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool loading = true;
+    private DesenvCard card;
+    private List<DesenvCardHistorico> historicos = new();
+
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Início", href: "/"),
+            new BreadcrumbItem("Desenvolvimento", href: "/desenvolvimento"),
+            new BreadcrumbItem($"Histórico #{Id}", href: null, disabled: true)
+        };
+
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            card = await ctx.DesenvCard
+                .Include(c => c.ChamadoModulo)
+                .Include(c => c.DesenvCardStatus)
+                .Include(c => c.Usuario)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == Id);
+
+            if (card != null)
+            {
+                historicos = await ctx.DesenvCardHistorico
+                    .Include(h => h.Usuario)
+                    .Include(h => h.DesenvCardStatus)
+                    .Where(h => h.DesenvCardId == Id)
+                    .OrderByDescending(h => h.Data)
+                    .ThenByDescending(h => h.Id)
+                    .AsNoTracking()
+                    .ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar histórico: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task AbrirNovoHistorico()
+    {
+        var parameters = new DialogParameters
+        {
+            { "CardId", Id },
+            { "RotuloCard", card?.Rotulo ?? $"Card #{Id}" },
+            { "StatusAtualId", card?.DesenvCardStatusId ?? 1 }
+        };
+
+        var dialog = await DialogService.ShowAsync<DialogNovoHistoricoDesenv>("Nova Anotação", parameters, new DialogOptions { MaxWidth = MaxWidth.Medium, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CarregarDados();
+        }
+    }
+}

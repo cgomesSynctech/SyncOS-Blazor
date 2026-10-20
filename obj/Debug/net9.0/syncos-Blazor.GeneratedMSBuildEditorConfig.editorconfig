@@ -1,0 +1,204 @@
+is_global = true
+build_property.MudDebugAnalyzer = 
+build_property.MudAllowedAttributePattern = 
+build_property.MudAllowedAttributeList = 
+build_property.TargetFramework = net9.0
+build_property.TargetPlatformMinVersion = 
+build_property.UsingMicrosoftNETSdkWeb = true
+build_property.ProjectTypeGuids = 
+build_property.InvariantGlobalization = 
+build_property.PlatformNeutralAssembly = 
+build_property.EnforceExtendedAnalyzerRules = 
+build_property._SupportedPlatformList = Linux,macOS,Windows
+build_property.RootNamespace = syncos_Blazor
+build_property.RootNamespace = syncos_Blazor
+build_property.ProjectDir = D:\projetos\syncos-Blazor\
+build_property.EnableComHosting = 
+build_property.EnableGeneratedComInterfaceComImportInterop = 
+build_property.RazorLangVersion = 9.0
+build_property.SupportLocalizedComponentNames = 
+build_property.GenerateRazorMetadataSourceChecksumAttributes = 
+build_property.MSBuildProjectDirectory = D:\projetos\syncos-Blazor
+build_property._RazorSourceGeneratorDebug = 
+build_property.EffectiveAnalysisLevelStyle = 9.0
+build_property.EnableCodeStyleSeverity = 
+
+[D:/projetos/syncos-Blazor/Components/App.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xBcHAucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Layout/LoginLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTG9naW5MYXlvdXQucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Layout/RedirectToLogin.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcUmVkaXJlY3RUb0xvZ2luLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Atualizacoes/AtualizacaoForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBdHVhbGl6YWNvZXNcQXR1YWxpemFjYW9Gb3JtLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Atualizacoes/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xBdHVhbGl6YWNvZXNcSW5kZXgucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Chamados/ChamadoDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDaGFtYWRvc1xDaGFtYWRvRGV0YWlscy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Chamados/ChamadoForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDaGFtYWRvc1xDaGFtYWRvRm9ybS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Chamados/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDaGFtYWRvc1xJbmRleC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Clientes/ClienteDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDbGllbnRlc1xDbGllbnRlRGV0YWlscy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Clientes/ClienteForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDbGllbnRlc1xDbGllbnRlRm9ybS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Clientes/DialogPendencia.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDbGllbnRlc1xEaWFsb2dQZW5kZW5jaWEucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Clientes/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDbGllbnRlc1xJbmRleC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Counter.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xDb3VudGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Desenvolvimento/DesenvCardDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEZXNlbnZvbHZpbWVudG9cRGVzZW52Q2FyZERldGFpbHMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Desenvolvimento/DesenvCardForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEZXNlbnZvbHZpbWVudG9cRGVzZW52Q2FyZEZvcm0ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Desenvolvimento/DesenvHistorico.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEZXNlbnZvbHZpbWVudG9cRGVzZW52SGlzdG9yaWNvLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Desenvolvimento/DialogAlteraStatusDesenv.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEZXNlbnZvbHZpbWVudG9cRGlhbG9nQWx0ZXJhU3RhdHVzRGVzZW52LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Desenvolvimento/DialogNovoHistoricoDesenv.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEZXNlbnZvbHZpbWVudG9cRGlhbG9nTm92b0hpc3Rvcmljb0Rlc2Vudi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Desenvolvimento/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xEZXNlbnZvbHZpbWVudG9cSW5kZXgucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Error.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xFcnJvci5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Home.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xIb21lLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Login.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xMb2dpbi5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Municipios/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xNdW5pY2lwaW9zXEluZGV4LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Municipios/MunicipioForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xNdW5pY2lwaW9zXE11bmljaXBpb0Zvcm0ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Parcelas/GeradorParcelas.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQYXJjZWxhc1xHZXJhZG9yUGFyY2VsYXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Parcelas/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQYXJjZWxhc1xJbmRleC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Parcelas/ParcelaDetails.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQYXJjZWxhc1xQYXJjZWxhRGV0YWlscy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Parcelas/ParcelaForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQYXJjZWxhc1xQYXJjZWxhRm9ybS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Prospectos/DialogAlteraSetor.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9zcGVjdG9zXERpYWxvZ0FsdGVyYVNldG9yLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Prospectos/DialogAlteraStatus.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9zcGVjdG9zXERpYWxvZ0FsdGVyYVN0YXR1cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Prospectos/DialogDesistencia.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9zcGVjdG9zXERpYWxvZ0Rlc2lzdGVuY2lhLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Prospectos/DialogNovoHistorico.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9zcGVjdG9zXERpYWxvZ05vdm9IaXN0b3JpY28ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Prospectos/EfetivarVenda.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9zcGVjdG9zXEVmZXRpdmFyVmVuZGEucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Prospectos/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9zcGVjdG9zXEluZGV4LnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Prospectos/ProspectoForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9zcGVjdG9zXFByb3NwZWN0b0Zvcm0ucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Prospectos/ProspectoHistorico.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xQcm9zcGVjdG9zXFByb3NwZWN0b0hpc3Rvcmljby5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/TermosDeUso.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xUZXJtb3NEZVVzby5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Usuarios/AlterarSenha.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xVc3Vhcmlvc1xBbHRlcmFyU2VuaGEucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Usuarios/Index.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xVc3Vhcmlvc1xJbmRleC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Usuarios/UsuarioForm.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xVc3Vhcmlvc1xVc3VhcmlvRm9ybS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Pages/Weather.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xQYWdlc1xXZWF0aGVyLnJhem9y
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Routes.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xSb3V0ZXMucmF6b3I=
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/_Imports.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xfSW1wb3J0cy5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = 
+
+[D:/projetos/syncos-Blazor/Components/Layout/MainLayout.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTWFpbkxheW91dC5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-5axhdg6b6y
+
+[D:/projetos/syncos-Blazor/Components/Layout/NavMenu.razor]
+build_metadata.AdditionalFiles.TargetPath = Q29tcG9uZW50c1xMYXlvdXRcTmF2TWVudS5yYXpvcg==
+build_metadata.AdditionalFiles.CssScope = b-oc26yyajx6

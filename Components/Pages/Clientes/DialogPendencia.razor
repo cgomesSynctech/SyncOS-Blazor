@@ -1,0 +1,75 @@
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+
+<MudDialog>
+    <DialogContent>
+        <div class="mb-3">
+            <MudText Typo="Typo.subtitle2" Color="Color.Secondary">Cliente</MudText>
+            <MudText Typo="Typo.body1" Style="font-weight: 600;">@Cliente.Fantasia (@Cliente.Razao)</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">CNPJ: @Cliente.CPF_CNPJ</MudText>
+        </div>
+
+        <MudDivider Class="my-3" />
+
+        <MudSwitch T="bool" @bind-Value="Cliente.Pendencia" Color="Color.Warning" Label="@(Cliente.Pendencia ? "Cliente com Pendência Financeira" : "Sem Pendência Financeira")" />
+
+        <MudTextField @bind-Value="Cliente.PendenciaObs" Label="Observação da Pendência" Variant="Variant.Outlined"
+                      Lines="4" Class="mt-3" Placeholder="Digite aqui o motivo ou detalhes da pendência financeira..." />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancel">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Submit" Disabled="@_salvando">
+            @if (_salvando)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Salvando...</MudText>
+            }
+            else
+            {
+                <span>Salvar</span>
+            }
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public Cliente Cliente { get; set; } = new();
+
+    private bool _salvando = false;
+
+    private async Task Submit()
+    {
+        _salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var aux = await ctx.Clientes.FindAsync(Cliente.Id);
+            if (aux != null)
+            {
+                aux.Pendencia = Cliente.Pendencia;
+                aux.PendenciaObs = Cliente.PendenciaObs;
+                ctx.Update(aux);
+                await ctx.SaveChangesAsync();
+
+                _ = Task.Run(() => new EspelharCliente(ctx, aux).Salvar());
+
+                Snackbar.Add($"Pendência do cliente {aux.Fantasia} atualizada com sucesso.", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(aux));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao atualizar pendência: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+
+    private void Cancel() => MudDialog.Cancel();
+}

@@ -1,0 +1,212 @@
+@page "/clientes/detalhes/{Id:int}"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Detalhes do Cliente - SyncOS</PageTitle>
+
+@if (_carregando)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else if (_cliente == null)
+{
+    <MudAlert Severity="Severity.Warning">Cliente não encontrado.</MudAlert>
+    <MudButton Variant="Variant.Filled" Color="Color.Primary" Href="/clientes" Class="mt-3">Voltar para a lista</MudButton>
+}
+else
+{
+    <div class="d-flex justify-space-between align-center mb-4">
+        <div>
+            <div class="d-flex align-center gap-2">
+                <MudText Typo="Typo.h5" Style="font-weight: 700;">@_cliente.Fantasia</MudText>
+                <MudChip T="string" Color="Color.Default" Size="Size.Small">ID: @_cliente.Id</MudChip>
+                @if (_cliente.Desativado)
+                {
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small">Desativado</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small">Ativo</MudChip>
+                }
+
+                @if (_cliente.Bloqueado)
+                {
+                    <MudChip T="string" Color="Color.Warning" Size="Size.Small">Bloqueado</MudChip>
+                }
+
+                @if (_cliente.Pendencia)
+                {
+                    <MudChip T="string" Color="Color.Info" Size="Size.Small">Pendência Financeira</MudChip>
+                }
+            </div>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@_cliente.Razao</MudText>
+        </div>
+
+        <div class="d-flex gap-2">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/clientes">
+                Voltar
+            </MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" Href="@($"/clientes/editar/{_cliente.Id}")">
+                Editar
+            </MudButton>
+        </div>
+    </div>
+
+    @if (_cliente.Pendencia && !string.IsNullOrWhiteSpace(_cliente.PendenciaObs))
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-4">
+            <strong>Observação de Pendência:</strong> @_cliente.PendenciaObs
+        </MudAlert>
+    }
+
+    <MudGrid Spacing="3">
+        <!-- Card 1: Informações Cadastrais -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="1">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.Info" Size="Size.Small" Class="mr-1" /> Dados Cadastrais</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <tbody>
+                            <tr><td><strong>Razão Social:</strong></td><td>@_cliente.Razao</td></tr>
+                            <tr><td><strong>Nome Fantasia:</strong></td><td>@_cliente.Fantasia</td></tr>
+                            <tr><td><strong>CPF / CNPJ:</strong></td><td>@_cliente.CPF_CNPJ</td></tr>
+                            <tr><td><strong>Inscrição Estadual:</strong></td><td>@_cliente.InscricaoEstadual</td></tr>
+                            <tr><td><strong>Revenda:</strong></td><td>@(_cliente.Revenda?.Descricao ?? "-")</td></tr>
+                            <tr><td><strong>Contato:</strong></td><td>@_cliente.Contato</td></tr>
+                            <tr><td><strong>WhatsApp:</strong></td><td>@_cliente.WhatsApp</td></tr>
+                            <tr><td><strong>E-mail:</strong></td><td>@_cliente.Email</td></tr>
+                            <tr><td><strong>Inclusão:</strong></td><td>@_cliente.DataInclusao.ToString("dd/MM/yyyy HH:mm")</td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Card 2: Endereço & Localização -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="1">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.LocationOn" Size="Size.Small" Class="mr-1" /> Endereço & Localização</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <tbody>
+                            <tr><td><strong>Logradouro:</strong></td><td>@_cliente.Endereco, @_cliente.Numero</td></tr>
+                            <tr><td><strong>Bairro:</strong></td><td>@_cliente.Bairro</td></tr>
+                            <tr><td><strong>CEP:</strong></td><td>@_cliente.CEP</td></tr>
+                            <tr><td><strong>Município / UF:</strong></td><td>@(_cliente.Municipio?.Descricao ?? "") - @_cliente.UFId</td></tr>
+                            <tr><td><strong>Coordenadas:</strong></td><td>@_cliente.LatitudeLongitude</td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+
+            <MudCard Elevation="1" Class="mt-3">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.PersonPin" Size="Size.Small" Class="mr-1" /> Responsável</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <tbody>
+                            <tr><td><strong>Nome:</strong></td><td>@_cliente.Resp_Nome</td></tr>
+                            <tr><td><strong>CPF:</strong></td><td>@_cliente.Resp_CPF</td></tr>
+                            <tr><td><strong>Endereço:</strong></td><td>@_cliente.Resp_Endereco, @_cliente.Resp_Numero - @_cliente.Resp_Cidade/@_cliente.Resp_UF</td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Card 3: Financeiro & Contratos -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="1">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.MonetizationOn" Size="Size.Small" Class="mr-1" /> Valores & Contrato</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSimpleTable Dense="true" Hover="true">
+                        <tbody>
+                            <tr><td><strong>Valor Manutenção:</strong></td><td style="font-weight: 600; color: #0D6EFD;">@_cliente.ValorContrato.ToString("C")</td></tr>
+                            <tr><td><strong>Valor Backup:</strong></td><td>@_cliente.ValorContratoBackup.ToString("C")</td></tr>
+                            <tr><td><strong>Valor SPED:</strong></td><td>@_cliente.ValorSped.ToString("C")</td></tr>
+                            <tr><td><strong>Valor Comissão:</strong></td><td>@_cliente.ValorComissao.ToString("C")</td></tr>
+                            <tr><td><strong>Vendedor:</strong></td><td>@_cliente.Vendedor</td></tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Card 4: Módulos Ativos -->
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="1">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;"><MudIcon Icon="@Icons.Material.Filled.Apps" Size="Size.Small" Class="mr-1" /> Módulos Habilitados</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <div class="d-flex gap-2 flex-wrap">
+                        <MudChip T="string" Color="@(_cliente.Retaguarda ? Color.Primary : Color.Default)" Variant="@(_cliente.Retaguarda ? Variant.Filled : Variant.Outlined)">Retaguarda</MudChip>
+                        <MudChip T="string" Color="@(_cliente.Nf ? Color.Primary : Color.Default)" Variant="@(_cliente.Nf ? Variant.Filled : Variant.Outlined)">NF-e</MudChip>
+                        <MudChip T="string" Color="@(_cliente.Nfc ? Color.Primary : Color.Default)" Variant="@(_cliente.Nfc ? Variant.Filled : Variant.Outlined)">NFC-e</MudChip>
+                        <MudChip T="string" Color="@(_cliente.MDF ? Color.Primary : Color.Default)" Variant="@(_cliente.MDF ? Variant.Filled : Variant.Outlined)">MDF-e</MudChip>
+                        <MudChip T="string" Color="@(_cliente.VipShop ? Color.Primary : Color.Default)" Variant="@(_cliente.VipShop ? Variant.Filled : Variant.Outlined)">VipShop</MudChip>
+                        <MudChip T="string" Color="@(_cliente.Sped ? Color.Primary : Color.Default)" Variant="@(_cliente.Sped ? Variant.Filled : Variant.Outlined)">SPED</MudChip>
+                        <MudChip T="string" Color="@(_cliente.Backup ? Color.Primary : Color.Default)" Variant="@(_cliente.Backup ? Variant.Filled : Variant.Outlined)">Backup</MudChip>
+                        <MudChip T="string" Color="@(_cliente.TEF ? Color.Primary : Color.Default)" Variant="@(_cliente.TEF ? Variant.Filled : Variant.Outlined)">TEF</MudChip>
+                        <MudChip T="string" Color="@(_cliente.Certificado ? Color.Primary : Color.Default)" Variant="@(_cliente.Certificado ? Variant.Filled : Variant.Outlined)">Certificado</MudChip>
+                        @if (_cliente.Outros)
+                        {
+                            <MudChip T="string" Color="Color.Primary" Variant="Variant.Filled">Outros: @_cliente.EspecieOutros</MudChip>
+                        }
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Cliente _cliente;
+    private bool _carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _carregando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            _cliente = await ctx.Clientes
+                .Include(c => c.Municipio)
+                .Include(c => c.Revenda)
+                .Include(c => c.UF)
+                .FirstOrDefaultAsync(c => c.Id == Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar detalhes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+}

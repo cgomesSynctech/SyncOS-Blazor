@@ -1,0 +1,133 @@
+@inherits LayoutComponentBase
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+
+@implements IDisposable
+
+<MudThemeProvider Theme="_theme" IsDarkMode="_isDarkMode" />
+<MudPopoverProvider />
+<MudDialogProvider FullWidth="true" MaxWidth="MaxWidth.Medium" CloseButton="true" Position="DialogPosition.Center" />
+<MudSnackbarProvider />
+
+@if (AuthService.IsAuthenticated)
+{
+    <MudLayout>
+        <MudAppBar Elevation="1" Dense="false" Color="Color.Surface" Fixed="true">
+            <MudIconButton Icon="@Icons.Material.Filled.Menu" Color="Color.Inherit" Edge="Edge.Start" OnClick="@(() => _drawerOpen = !_drawerOpen)" />
+            
+            <MudText Typo="Typo.h6" Class="ml-2 font-weight-bold" Color="Color.Primary">SyncOS</MudText>
+            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined" Class="ml-2">Web</MudChip>
+
+            <MudSpacer />
+
+            <MudTooltip Text="@(_isDarkMode ? "Modo Claro" : "Modo Escuro")">
+                <MudIconButton Icon="@(_isDarkMode ? Icons.Material.Filled.LightMode : Icons.Material.Filled.DarkMode)"
+                               Color="Color.Default"
+                               OnClick="@(() => _isDarkMode = !_isDarkMode)" />
+            </MudTooltip>
+
+            <div class="d-flex align-center ml-2">
+                <div class="d-none d-sm-flex flex-column text-right mr-2">
+                    <MudText Typo="Typo.body2" Style="font-weight: 600; line-height: 1.1;">@AuthService.CurrentUser?.LoginName</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@AuthService.CurrentUser?.Role</MudText>
+                </div>
+
+                <MudMenu AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <ActivatorContent>
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Medium" Style="cursor: pointer;">
+                            @(AuthService.CurrentUser?.LoginName?.Substring(0, 1).ToUpper() ?? "U")
+                        </MudAvatar>
+                    </ActivatorContent>
+                    <ChildContent>
+                        <MudMenuItem Icon="@Icons.Material.Filled.Person">Meu Perfil</MudMenuItem>
+                        <MudMenuItem Icon="@Icons.Material.Filled.LockReset" Href="/usuarios/alterar-senha">Alterar Senha</MudMenuItem>
+                        <MudDivider />
+                        <MudMenuItem Icon="@Icons.Material.Filled.Logout" IconColor="Color.Error" OnClick="EfetuarLogout">
+                            Sair do Sistema
+                        </MudMenuItem>
+                    </ChildContent>
+                </MudMenu>
+            </div>
+        </MudAppBar>
+
+        <MudDrawer @bind-Open="_drawerOpen" ClipMode="DrawerClipMode.Always" Elevation="1" Variant="DrawerVariant.Responsive">
+            <NavMenu />
+        </MudDrawer>
+
+        <MudMainContent Class="pa-4 pt-16">
+            <MudContainer MaxWidth="MaxWidth.ExtraLarge" Class="mt-4">
+                @Body
+            </MudContainer>
+        </MudMainContent>
+    </MudLayout>
+}
+else
+{
+    <div class="d-flex justify-center align-center" style="height: 100vh;">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+
+@code {
+    private bool _drawerOpen = true;
+    private bool _isDarkMode = false;
+
+    protected override void OnInitialized()
+    {
+        AuthService.OnAuthStateChanged += StateHasChanged;
+
+        if (!AuthService.IsAuthenticated)
+        {
+            var relativePath = Navigation.ToBaseRelativePath(Navigation.Uri);
+            if (!string.IsNullOrWhiteSpace(relativePath) && !relativePath.StartsWith("login", StringComparison.OrdinalIgnoreCase))
+            {
+                Navigation.NavigateTo($"/login?returnUrl={Uri.EscapeDataString("/" + relativePath)}", replace: true);
+            }
+            else
+            {
+                Navigation.NavigateTo("/login", replace: true);
+            }
+        }
+    }
+
+    public void Dispose()
+    {
+        AuthService.OnAuthStateChanged -= StateHasChanged;
+    }
+
+    private void EfetuarLogout()
+    {
+        AuthService.Logout();
+        Navigation.NavigateTo("/login", replace: true);
+    }
+
+    private readonly MudTheme _theme = new MudTheme()
+    {
+        PaletteLight = new PaletteLight()
+        {
+            Primary = "#0D6EFD",
+            Secondary = "#6C757D",
+            AppbarBackground = "#FFFFFF",
+            AppbarText = "#212529",
+            DrawerBackground = "#FFFFFF",
+            DrawerText = "#212529",
+            Background = "#F4F6F9",
+            Surface = "#FFFFFF"
+        },
+        PaletteDark = new PaletteDark()
+        {
+            Primary = "#3D8BFD",
+            Secondary = "#ADB5BD",
+            AppbarBackground = "#1E1E24",
+            AppbarText = "#E9ECEF",
+            DrawerBackground = "#1E1E24",
+            DrawerText = "#E9ECEF",
+            Background = "#121214",
+            Surface = "#1E1E24"
+        },
+        LayoutProperties = new LayoutProperties()
+        {
+            DefaultBorderRadius = "6px"
+        }
+    };
+}

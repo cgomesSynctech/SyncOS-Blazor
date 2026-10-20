@@ -1,0 +1,218 @@
+@page "/municipios"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Municípios / IBGE - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+            <MudIcon Icon="@Icons.Material.Filled.LocationCity" Class="mr-2" Color="Color.Primary" />
+            Municípios & Localidades (IBGE)
+        </MudText>
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+            Base oficial de cidades, códigos IBGE e unidades federativas
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="/municipios/novo">
+            Novo Município
+        </MudButton>
+    </div>
+</div>
+
+<MudCard Elevation="2" Class="mb-4">
+    <MudCardContent>
+        <MudGrid Spacing="2" Class="align-center">
+            <MudItem xs="12" md="5">
+                <MudTextField @bind-Value="searchString"
+                              Placeholder="Pesquisar por Código IBGE ou Nome da Cidade..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="AtualizarTabela"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Clearable="true"
+                              OnClearButtonClick="LimparBusca" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="string" Value="@ufFiltro" ValueChanged="OnUfChanged" Label="Estado (UF)" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                    <MudSelectItem Value="@("")">Todos os Estados</MudSelectItem>
+                    @foreach (var u in ufs)
+                    {
+                        <MudSelectItem Value="@u.Id">@($"{u.Id} - {u.Descricao}")</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="4" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="AtualizarTabela">
+                    Atualizar
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+<MudTable ServerData="CarregarMunicipiosPaginados"
+          @ref="tabela"
+          Hover="true"
+          Striped="true"
+          Elevation="2"
+          RowsPerPage="20">
+    <HeaderContent>
+        <MudTh><MudTableSortLabel SortLabel="Id" T="Municipio">Código IBGE</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortLabel="Descricao" T="Municipio">Município / Cidade</MudTableSortLabel></MudTh>
+        <MudTh><MudTableSortLabel SortLabel="UFId" T="Municipio">UF</MudTableSortLabel></MudTh>
+        <MudTh>Ordem</MudTh>
+        <MudTh Style="text-align: right;">Ações</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="Código IBGE">
+            <MudText Typo="Typo.body2" Style="font-weight: 700; font-family: monospace;">@context.Id</MudText>
+        </MudTd>
+        <MudTd DataLabel="Município">
+            <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Descricao</MudText>
+        </MudTd>
+        <MudTd DataLabel="UF">
+            <MudChip T="string" Color="Color.Primary" Variant="Variant.Outlined" Size="Size.Small">
+                @context.UFId
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Ordem">
+            <MudText Typo="Typo.caption" Color="Color.Secondary">@context.Ordem</MudText>
+        </MudTd>
+        <MudTd DataLabel="Ações" Style="text-align: right;">
+            <MudTooltip Text="Editar Município">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" Href="@($"/municipios/editar/{context.Id}")" />
+            </MudTooltip>
+            <MudTooltip Text="Excluir Município">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarExclusao(context))" />
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Class="pa-4 text-center" Color="Color.Secondary">Nenhum município encontrado.</MudText>
+    </NoRecordsContent>
+    <LoadingContent>
+        <MudText Class="pa-4 text-center" Color="Color.Primary">Carregando municípios...</MudText>
+    </LoadingContent>
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Itens por página:" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<Municipio> tabela;
+    private string searchString = "";
+    private string ufFiltro = "";
+    private List<UF> ufs = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            ufs = await ctx.UFs.AsNoTracking().OrderBy(u => u.Id).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar UFs: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task<TableData<Municipio>> CarregarMunicipiosPaginados(TableState state, CancellationToken token)
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var query = ctx.Municipios.Include(m => m.UF).AsNoTracking().AsQueryable();
+
+            if (!string.IsNullOrWhiteSpace(searchString))
+            {
+                var termo = searchString.Trim();
+                if (int.TryParse(termo, out int codIbge))
+                {
+                    query = query.Where(m => m.Id.ToString().StartsWith(termo));
+                }
+                else
+                {
+                    query = query.Where(m => m.Descricao.Contains(termo));
+                }
+            }
+
+            if (!string.IsNullOrWhiteSpace(ufFiltro))
+            {
+                query = query.Where(m => m.UFId == ufFiltro);
+            }
+
+            // Ordenação
+            query = state.SortLabel switch
+            {
+                "Id" => state.SortDirection == SortDirection.Descending ? query.OrderByDescending(m => m.Id) : query.OrderBy(m => m.Id),
+                "UFId" => state.SortDirection == SortDirection.Descending ? query.OrderByDescending(m => m.UFId) : query.OrderBy(m => m.UFId),
+                _ => state.SortDirection == SortDirection.Descending ? query.OrderByDescending(m => m.Descricao) : query.OrderBy(m => m.Descricao)
+            };
+
+            var totalItems = await query.CountAsync(token);
+            var items = await query.Skip(state.Page * state.PageSize).Take(state.PageSize).ToListAsync(token);
+
+            return new TableData<Municipio> { TotalItems = totalItems, Items = items };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao consultar municípios: {ex.Message}", Severity.Error);
+            return new TableData<Municipio> { TotalItems = 0, Items = new List<Municipio>() };
+        }
+    }
+
+    private void AtualizarTabela()
+    {
+        tabela?.ReloadServerData();
+    }
+
+    private void OnUfChanged(string val)
+    {
+        ufFiltro = val;
+        AtualizarTabela();
+    }
+
+    private void LimparBusca()
+    {
+        searchString = "";
+        AtualizarTabela();
+    }
+
+    private async Task ConfirmarExclusao(Municipio m)
+    {
+        bool? confirmar = await DialogService.ShowMessageBoxAsync(
+            "Excluir Município",
+            $"Deseja realmente excluir o município '{m.Descricao} - {m.UFId}' (IBGE: {m.Id})?",
+            yesText: "Excluir", cancelText: "Cancelar");
+
+        if (confirmar == true)
+        {
+            try
+            {
+                using var ctx = await DbFactory.CreateDbContextAsync();
+                var dbM = await ctx.Municipios.FindAsync(m.Id);
+                if (dbM != null)
+                {
+                    ctx.Municipios.Remove(dbM);
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add($"Município '{m.Descricao}' excluído com sucesso!", Severity.Success);
+                    AtualizarTabela();
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Erro ao excluir município: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+}

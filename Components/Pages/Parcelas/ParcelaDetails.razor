@@ -1,0 +1,266 @@
+@page "/parcelas/detalhes/{Id:int}"
+@using System.Text.RegularExpressions
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Detalhes da Parcela - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0 mb-2" />
+        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+            <MudIcon Icon="@Icons.Material.Filled.Receipt" Class="mr-2" Color="Color.Primary" />
+            Título #@Id - @(parcela?.NomeCliente ?? "")
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/parcelas">
+            Voltar
+        </MudButton>
+        @if (parcela != null && parcela.Status != "L")
+        {
+            <MudButton Variant="Variant.Filled" Color="Color.Success" StartIcon="@Icons.Material.Filled.CheckCircle" OnClick="LiquidarParcela">
+                Liquidar Título
+            </MudButton>
+        }
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" Href="@($"/parcelas/editar/{Id}")">
+            Editar
+        </MudButton>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else if (parcela == null)
+{
+    <MudAlert Severity="Severity.Error">Parcela não encontrada.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12" md="8">
+            <MudCard Elevation="2" Class="rounded-lg mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">Dados do Pagador / Cliente</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid>
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">NOME / RAZÃO SOCIAL</MudText>
+                            <MudText Typo="Typo.body1" Style="font-weight: 600;">@parcela.NomeCliente</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">CPF / CNPJ</MudText>
+                            <MudText Typo="Typo.body1" Style="font-family: monospace;">@FormatCgcCpf(parcela.CPFCNPJ)</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">TELEFONE</MudText>
+                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(parcela.Fone) ? "-" : FormatTelefone(parcela.Fone))</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" sm="6">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">E-MAIL</MudText>
+                            <MudText Typo="Typo.body1">@(string.IsNullOrEmpty(parcela.Email) ? "-" : parcela.Email)</MudText>
+                        </MudItem>
+
+                        <MudItem xs="12" Class="mt-2">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Primary" Size="Size.Small" StartIcon="@Icons.Material.Filled.Person" Href="@($"/clientes/detalhes/{parcela.ClienteId}")">
+                                Ver Ficha Cadastral do Cliente (#@parcela.ClienteId)
+                            </MudButton>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="2" Class="rounded-lg mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">Valores & Vencimento</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <div class="mb-3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">STATUS DO TÍTULO</MudText>
+                        <div class="mt-1">
+                            <MudChip T="string" Color="@GetStatusColor(parcela.Status)" Variant="Variant.Filled">
+                                @GetStatusDescricao(parcela.Status)
+                            </MudChip>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">VALOR DO TÍTULO</MudText>
+                        <MudText Typo="Typo.h4" Style="font-weight: 700;" Color="Color.Primary">
+                            @parcela.Valor.ToString("C")
+                        </MudText>
+                    </div>
+
+                    <div class="mb-3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">JUROS APÓS VENCIMENTO</MudText>
+                        <MudText Typo="Typo.body1" Style="font-weight: 600;" Color="Color.Error">
+                            @(parcela.Juros.HasValue ? parcela.Juros.Value.ToString("C") : "R$ 0,00")
+                        </MudText>
+                    </div>
+
+                    <div class="mb-3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">DATA DE VENCIMENTO</MudText>
+                        <MudText Typo="Typo.body1" Style="@(parcela.Status != "L" && parcela.DataVencimento < DateTime.Today ? "color: red; font-weight: 700;" : "font-weight: 600;")">
+                            @parcela.DataVencimento.ToString("dd/MM/yyyy")
+                            @if (parcela.Status != "L" && parcela.DataVencimento < DateTime.Today)
+                            {
+                                <span class="ml-1">(Vencido)</span>
+                            }
+                        </MudText>
+                    </div>
+
+                    @if (parcela.Status == "L" || (parcela.ValorPago.HasValue && parcela.ValorPago > 0))
+                    {
+                        <div class="mb-3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">VALOR PAGO</MudText>
+                            <MudText Typo="Typo.body1" Style="font-weight: 600;" Color="Color.Success">
+                                @((parcela.ValorPago ?? 0).ToString("C"))
+                            </MudText>
+                        </div>
+                    }
+
+                    @if (parcela.DataPagamento.HasValue)
+                    {
+                        <div class="mb-3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">DATA DE PAGAMENTO</MudText>
+                            <MudText Typo="Typo.body1" Style="font-weight: 600;" Color="Color.Success">
+                                @parcela.DataPagamento.Value.ToString("dd/MM/yyyy")
+                            </MudText>
+                        </div>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(parcela.Observacao))
+                    {
+                        <div class="mb-3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">OBSERVAÇÃO</MudText>
+                            <MudText Typo="Typo.body1">@parcela.Observacao</MudText>
+                        </div>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool loading = true;
+    private Parcela parcela;
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Início", href: "/"),
+            new BreadcrumbItem("Parcelas", href: "/parcelas"),
+            new BreadcrumbItem($"Título #{Id}", href: null, disabled: true)
+        };
+
+        await CarregarParcela();
+    }
+
+    private async Task CarregarParcela()
+    {
+        loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            parcela = await ctx.Parcelas
+                .Include(p => p.Cliente)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(p => p.Id == Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar detalhes da parcela: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task LiquidarParcela()
+    {
+        bool? confirmar = await DialogService.ShowMessageBoxAsync(
+            "Liquidar Parcela",
+            $"Confirmar o recebimento e liquidação deste título no valor de {parcela.Valor:C}?",
+            yesText: "Sim, Liquidar", cancelText: "Cancelar");
+
+        if (confirmar == true)
+        {
+            try
+            {
+                using var ctx = await DbFactory.CreateDbContextAsync();
+                var dbParcela = await ctx.Parcelas.FindAsync(parcela.Id);
+                if (dbParcela != null)
+                {
+                    dbParcela.Status = "L";
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add("Parcela liquidada com sucesso!", Severity.Success);
+                    await CarregarParcela();
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Erro ao liquidar parcela: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private string GetStatusDescricao(string status) => status switch
+    {
+        "A" => "A Vencer",
+        "V" => "Vencido",
+        "L" => "Liquidado",
+        _ => status ?? "-"
+    };
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "A" => Color.Warning,
+        "V" => Color.Error,
+        "L" => Color.Success,
+        _ => Color.Default
+    };
+
+    private string FormatCgcCpf(string doc)
+    {
+        if (string.IsNullOrEmpty(doc)) return "-";
+        var nums = Regex.Replace(doc, @"[^\d]", "");
+        if (nums.Length == 11)
+            return $"{nums.Substring(0, 3)}.{nums.Substring(3, 3)}.{nums.Substring(6, 3)}-{nums.Substring(9, 2)}";
+        if (nums.Length == 14)
+            return $"{nums.Substring(0, 2)}.{nums.Substring(2, 3)}.{nums.Substring(5, 3)}/{nums.Substring(8, 4)}-{nums.Substring(12, 2)}";
+        return doc;
+    }
+
+    private string FormatTelefone(string tel)
+    {
+        if (string.IsNullOrEmpty(tel)) return "";
+        var nums = Regex.Replace(tel, @"[^\d]", "");
+        if (nums.Length == 10)
+            return $"({nums.Substring(0, 2)}) {nums.Substring(2, 4)}-{nums.Substring(6, 4)}";
+        if (nums.Length == 11)
+            return $"({nums.Substring(0, 2)}) {nums.Substring(2, 5)}-{nums.Substring(7, 4)}";
+        return tel;
+    }
+}

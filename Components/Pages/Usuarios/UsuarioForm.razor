@@ -1,0 +1,206 @@
+@page "/usuarios/novo"
+@page "/usuarios/editar/{Id:int}"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject AuthService Auth
+
+<PageTitle>@(IsEdit ? "Editar Usuário" : "Novo Usuário") - SyncOS</PageTitle>
+
+<div class="mb-4">
+    <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0 mb-2" />
+    <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+        @(IsEdit ? $"Editar Usuário: {usuario.LoginName}" : "Cadastrar Novo Usuário")
+    </MudText>
+</div>
+
+@if (loading)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <MudCard Elevation="3" Class="rounded-lg">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                    <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.PersonAdd)" Class="mr-2" Color="Color.Primary" />
+                    Dados do Usuário
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <EditForm Model="@usuario" OnValidSubmit="SalvarUsuario">
+                <DataAnnotationsValidator />
+
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="usuario.LoginName"
+                                      Label="Nome de Usuário (Login) *"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Required="true"
+                                      RequiredError="Nome de login é obrigatório" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="usuario.Email"
+                                      Label="E-mail *"
+                                      InputType="InputType.Email"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Required="true"
+                                      RequiredError="E-mail é obrigatório" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudSelect T="int" @bind-Value="usuario.PerfilId" Label="Perfil / Nível de Acesso *" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                            @foreach (var p in perfis)
+                            {
+                                <MudSelectItem Value="@p.Id">@p.Descricao</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6" Class="d-flex align-center">
+                        <MudSwitch @bind-Value="usuario.Ativo" Color="Color.Success" Label="Usuário Ativo no Sistema" />
+                    </MudItem>
+
+                    @if (!IsEdit)
+                    {
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Info" Variant="Variant.Outlined">
+                                <b>Nota sobre a senha inicial:</b> Novos usuários são criados com a senha padrão <b>123</b>. O colaborador poderá alterá-la no primeiro acesso.
+                            </MudAlert>
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                <div class="d-flex justify-end gap-3 mt-6">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/usuarios">
+                        Cancelar
+                    </MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="@salvando">
+                        @if (salvando)
+                        {
+                            <MudProgressCircular Class="ms-n1 me-2" Size="Size.Small" Indeterminate="true" />
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <span>@(IsEdit ? "Salvar Alterações" : "Criar Usuário")</span>
+                        }
+                    </MudButton>
+                </div>
+            </EditForm>
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private bool IsEdit => Id.HasValue && Id.Value > 0;
+
+    private bool loading = true;
+    private bool salvando = false;
+    private Usuario usuario = new() { Ativo = true, PerfilId = 3 };
+    private List<UsuarioPerfil> perfis = new();
+
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Início", href: "/"),
+            new BreadcrumbItem("Usuários", href: "/usuarios"),
+            new BreadcrumbItem(IsEdit ? "Editar" : "Novo", href: null, disabled: true)
+        };
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            perfis = await ctx.Perfis.AsNoTracking().OrderBy(p => p.Id).ToListAsync();
+
+            if (IsEdit)
+            {
+                var dbUser = await ctx.Usuarios.FindAsync(Id.Value);
+                if (dbUser == null)
+                {
+                    Snackbar.Add("Usuário não encontrado.", Severity.Error);
+                    Navigation.NavigateTo("/usuarios");
+                    return;
+                }
+                usuario = dbUser;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar dados: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SalvarUsuario()
+    {
+        salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            var perfil = perfis.FirstOrDefault(p => p.Id == usuario.PerfilId);
+            usuario.Role = perfil?.Descricao ?? "Suporte";
+
+            if (IsEdit)
+            {
+                var dbUser = await ctx.Usuarios.FindAsync(usuario.Id);
+                if (dbUser != null)
+                {
+                    dbUser.LoginName = usuario.LoginName;
+                    dbUser.Email = usuario.Email;
+                    dbUser.PerfilId = usuario.PerfilId;
+                    dbUser.Role = usuario.Role;
+                    dbUser.Ativo = usuario.Ativo;
+
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add("Usuário atualizado com sucesso!", Severity.Success);
+                }
+            }
+            else
+            {
+                // Verifica duplicidade de email ou login
+                bool existe = await ctx.Usuarios.AnyAsync(u => u.Email == usuario.Email || u.LoginName == usuario.LoginName);
+                if (existe)
+                {
+                    Snackbar.Add("Já existe um usuário cadastrado com este Login ou E-mail.", Severity.Warning);
+                    salvando = false;
+                    return;
+                }
+
+                usuario.LoginPass = "123";
+                usuario.LoginPass = ToPassWord.Get(usuario);
+                usuario.Token = TokenService.GenereteToken(usuario);
+
+                ctx.Usuarios.Add(usuario);
+                await ctx.SaveChangesAsync();
+
+                Snackbar.Add($"Usuário '{usuario.LoginName}' criado com sucesso! Senha inicial: 123", Severity.Success);
+            }
+
+            Navigation.NavigateTo("/usuarios");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao salvar usuário: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+}

@@ -1,0 +1,136 @@
+@page "/login"
+@layout LoginLayout
+@inject AuthService AuthService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Login - SyncOS</PageTitle>
+
+<MudCard Elevation="4" Class="pa-6" Style="width: 100%; max-width: 440px; border-radius: 12px;">
+    <div class="text-center mb-6">
+        <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large" Class="mb-3 mx-auto" Style="width: 64px; height: 64px;">
+            <MudIcon Icon="@Icons.Material.Filled.Terminal" Size="Size.Large" />
+        </MudAvatar>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;" Color="Color.Primary">SyncOS</MudText>
+        <MudText Typo="Typo.body2" Color="Color.Secondary">Acesso ao Sistema de Gestão</MudText>
+    </div>
+
+    @if (!string.IsNullOrEmpty(_mensagemErro))
+    {
+        <MudAlert Severity="Severity.Error" Variant="Variant.Filled" Class="mb-4" ShowCloseIcon="true" CloseIconClicked="@(() => _mensagemErro = "")">
+            @_mensagemErro
+        </MudAlert>
+    }
+
+    <EditForm Model="@this" OnValidSubmit="RealizarLogin">
+        <div class="mb-3">
+            <MudTextField @bind-Value="_usuario" Label="E-mail ou Nome de Usuário" Variant="Variant.Outlined"
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Person"
+                          Immediate="true" Required="true" RequiredError="Informe o usuário ou e-mail"
+                          OnKeyUp="@OnKeyUp" />
+        </div>
+
+        <div class="mb-4">
+            <MudTextField @bind-Value="_senha" Label="Senha" Variant="Variant.Outlined"
+                          InputType="@_senhaInputType"
+                          Adornment="Adornment.End" AdornmentIcon="@_senhaIcon"
+                          OnAdornmentClick="AlternarVisibilidadeSenha"
+                          Immediate="true" Required="true" RequiredError="Informe sua senha"
+                          OnKeyUp="@OnKeyUp" />
+        </div>
+
+        <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                   Size="Size.Large" FullWidth="true" Disabled="@_processando" Style="height: 48px;">
+            @if (_processando)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Entrando...</MudText>
+            }
+            else
+            {
+                <span>Entrar no Sistema</span>
+            }
+        </MudButton>
+    </EditForm>
+
+    <div class="text-center mt-6">
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            Synctech &copy; @DateTime.Now.Year - Todos os direitos reservados.
+        </MudText>
+    </div>
+</MudCard>
+
+@code {
+    [SupplyParameterFromQuery(Name = "returnUrl")]
+    public string ReturnUrl { get; set; }
+
+    private string _usuario = "";
+    private string _senha = "";
+    private string _mensagemErro = "";
+    private bool _processando = false;
+
+    private bool _mostrarSenha = false;
+    private InputType _senhaInputType => _mostrarSenha ? InputType.Text : InputType.Password;
+    private string _senhaIcon => _mostrarSenha ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff;
+
+    protected override void OnInitialized()
+    {
+        if (AuthService.IsAuthenticated)
+        {
+            RedirecionarDestino();
+        }
+    }
+
+    private void AlternarVisibilidadeSenha()
+    {
+        _mostrarSenha = !_mostrarSenha;
+    }
+
+    private async Task OnKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter" && !_processando)
+        {
+            await RealizarLogin();
+        }
+    }
+
+    private async Task RealizarLogin()
+    {
+        _mensagemErro = "";
+        _processando = true;
+
+        try
+        {
+            var resultado = await AuthService.LoginAsync(_usuario, _senha);
+            if (resultado.Sucesso)
+            {
+                Snackbar.Add($"Bem-vindo, {AuthService.CurrentUser?.LoginName}!", Severity.Success);
+                RedirecionarDestino();
+            }
+            else
+            {
+                _mensagemErro = resultado.Mensagem;
+            }
+        }
+        catch (Exception ex)
+        {
+            _mensagemErro = $"Erro inesperado: {ex.Message}";
+        }
+        finally
+        {
+            _processando = false;
+        }
+    }
+
+    private void RedirecionarDestino()
+    {
+        if (!string.IsNullOrWhiteSpace(ReturnUrl) && !ReturnUrl.Contains("login", StringComparison.OrdinalIgnoreCase))
+        {
+            Navigation.NavigateTo(ReturnUrl);
+        }
+        else
+        {
+            Navigation.NavigateTo("/");
+        }
+    }
+}

@@ -1,0 +1,325 @@
+@page "/"
+@page "/dashboard"
+@using SyncOSCore.Services
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject AuthService Auth
+@inject ISnackbar Snackbar
+@inject IJSRuntime JS
+
+<PageTitle>Dashboard - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h4" Style="font-weight: 700; color: #1e293b;">Painel de Controle</MudText>
+        <MudText Typo="Typo.subtitle1" Color="Color.Secondary">
+            Bem-vindo(a), <b>@(Auth.CurrentUser?.LoginName ?? "Administrador")</b> (@(Auth.CurrentUser?.Role ?? "Suporte"))
+        </MudText>
+    </div>
+    <div>
+        <MudChip T="string" Icon="@Icons.Material.Filled.CalendarToday" Color="Color.Primary" Variant="Variant.Outlined">
+            @DateTime.Now.ToString("dd 'de' MMMM 'de' yyyy")
+        </MudChip>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <!-- KPIs -->
+    <MudGrid Class="mb-6">
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="3" Class="rounded-lg">
+                <MudCardContent Class="d-flex justify-space-between align-center pa-4">
+                    <div>
+                        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase;" Color="Color.Secondary">Clientes Ativos</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Success" Style="font-weight: 700;">@totalClientes.ToString("N0")</MudText>
+                        <MudLink Href="/clientes" Typo="Typo.caption" Color="Color.Success">Ver base de clientes &rarr;</MudLink>
+                    </div>
+                    <MudAvatar Color="Color.Success" Variant="Variant.Filled" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.People" />
+                    </MudAvatar>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="3" Class="rounded-lg">
+                <MudCardContent Class="d-flex justify-space-between align-center pa-4">
+                    <div>
+                        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase;" Color="Color.Secondary">Chamados em Aberto</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Warning" Style="font-weight: 700;">@totalChamadosAbertos</MudText>
+                        <MudLink Href="/chamados" Typo="Typo.caption" Color="Color.Warning">Ver suporte &rarr;</MudLink>
+                    </div>
+                    <MudAvatar Color="Color.Warning" Variant="Variant.Filled" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.HeadsetMic" />
+                    </MudAvatar>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="3" Class="rounded-lg">
+                <MudCardContent Class="d-flex justify-space-between align-center pa-4">
+                    <div>
+                        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase;" Color="Color.Secondary">Prospectos / Leads</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Info" Style="font-weight: 700;">@totalProspectos</MudText>
+                        <MudLink Href="/prospectos" Typo="Typo.caption" Color="Color.Info">Ver funil comercial &rarr;</MudLink>
+                    </div>
+                    <MudAvatar Color="Color.Info" Variant="Variant.Filled" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.TrendingUp" />
+                    </MudAvatar>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudCard Elevation="3" Class="rounded-lg">
+                <MudCardContent Class="d-flex justify-space-between align-center pa-4">
+                    <div>
+                        <MudText Typo="Typo.caption" Style="font-weight: 600; text-transform: uppercase;" Color="Color.Secondary">Parcelas a Vencer</MudText>
+                        <MudText Typo="Typo.h4" Color="Color.Primary" Style="font-weight: 700;">@totalParcelasAVencer</MudText>
+                        <MudLink Href="/parcelas" Typo="Typo.caption" Color="Color.Primary">Ver financeiro &rarr;</MudLink>
+                    </div>
+                    <MudAvatar Color="Color.Primary" Variant="Variant.Filled" Size="Size.Large">
+                        <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" />
+                    </MudAvatar>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Senhas do Dia & Gráfico -->
+    <MudGrid Class="mb-6">
+        <!-- Gerador Senhas do Dia -->
+        <MudItem xs="12" md="5">
+            <MudCard Elevation="3" Class="rounded-lg h-100">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.VpnKey" Class="mr-2" Color="Color.Primary" />
+                            Senhas do Dia
+                        </MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                            Geração automática baseada na data do sistema (@DateTime.Now.ToString("dd/MM/yyyy"))
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudPaper Elevation="0" Class="pa-3 mb-4 rounded border">
+                        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Color="Color.Primary">
+                            Senha do Dia (30 Dias)
+                        </MudText>
+                        <div class="d-flex align-center mt-2">
+                            <MudTextField @bind-Value="senhaDia30" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="font-family: monospace; font-size: 1.15rem; font-weight: 700;" />
+                            <MudTooltip Text="Copiar Senha do Dia">
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Primary" Class="ml-2" OnClick="@(() => CopiarTexto(senhaDia30, "Senha do Dia copiada!"))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Recalcular Senhas">
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Secondary" OnClick="GerarSenhas" />
+                            </MudTooltip>
+                        </div>
+                    </MudPaper>
+
+                    <MudPaper Elevation="0" Class="pa-3 rounded border">
+                        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Color="Color.Info">
+                            Senha Download XML (NFC-e)
+                        </MudText>
+                        <div class="d-flex align-center mt-2">
+                            <MudTextField @bind-Value="senhaDiaXML" ReadOnly="true" Variant="Variant.Outlined" Margin="Margin.Dense" Style="font-family: monospace; font-size: 1.15rem; font-weight: 700;" />
+                            <MudTooltip Text="Copiar Senha XML">
+                                <MudIconButton Icon="@Icons.Material.Filled.ContentCopy" Color="Color.Info" Class="ml-2" OnClick="@(() => CopiarTexto(senhaDiaXML, "Senha XML copiada!"))" />
+                            </MudTooltip>
+                            <MudTooltip Text="Recalcular Senhas">
+                                <MudIconButton Icon="@Icons.Material.Filled.Refresh" Color="Color.Secondary" OnClick="GerarSenhas" />
+                            </MudTooltip>
+                        </div>
+                    </MudPaper>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <!-- Gráfico Chamados Últimos 6 Meses -->
+        <MudItem xs="12" md="7">
+            <MudCard Elevation="3" Class="rounded-lg h-100">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                            <MudIcon Icon="@Icons.Material.Filled.BarChart" Class="mr-2" Color="Color.Primary" />
+                            Chamados Abertos nos Últimos 6 Meses
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (chartSeries.Count > 0 && chartSeries[0].Data.Any())
+                    {
+                        <MudChart T="double" ChartType="ChartType.Bar"
+                                  ChartSeries="@chartSeries"
+                                  ChartLabels="@chartLabels"
+                                  Width="100%"
+                                  Height="260px" />
+                    }
+                    else
+                    {
+                        <MudText Color="Color.Secondary" Class="text-center py-8">Nenhum dado de chamados no período.</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+
+    <!-- Ações Rápidas de Navegação -->
+    <MudCard Elevation="3" Class="rounded-lg">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6" Style="font-weight: 600;">Acesso Rápido aos Módulos</MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudGrid>
+                <MudItem xs="12" sm="6" md="4" lg="2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.People" Href="/clientes" Class="py-3">
+                        Clientes
+                    </MudButton>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4" lg="2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Warning" FullWidth="true" StartIcon="@Icons.Material.Filled.HeadsetMic" Href="/chamados" Class="py-3">
+                        Chamados
+                    </MudButton>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4" lg="2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Info" FullWidth="true" StartIcon="@Icons.Material.Filled.TrendingUp" Href="/prospectos" Class="py-3">
+                        Prospectos
+                    </MudButton>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4" lg="2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" FullWidth="true" StartIcon="@Icons.Material.Filled.DeveloperBoard" Href="/desenvolvimento" Class="py-3">
+                        Desenvolvimento
+                    </MudButton>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4" lg="2">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Tertiary" FullWidth="true" StartIcon="@Icons.Material.Filled.SystemUpdate" Href="/atualizacoes" Class="py-3">
+                        Atualizações
+                    </MudButton>
+                </MudItem>
+                <MudItem xs="12" sm="6" md="4" lg="2">
+                    <MudButton Variant="Variant.Filled" Color="Color.Primary" FullWidth="true" StartIcon="@Icons.Material.Filled.ReceiptLong" Href="/parcelas" Class="py-3">
+                        Parcelas
+                    </MudButton>
+                </MudItem>
+            </MudGrid>
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+    private bool loading = true;
+    private int totalClientes;
+    private int totalChamadosAbertos;
+    private int totalProspectos;
+    private int totalParcelasAVencer;
+
+    private string senhaDia30 = "";
+    private string senhaDiaXML = "";
+
+    private List<ChartSeries<double>> chartSeries = new();
+    private string[] chartLabels = Array.Empty<string>();
+
+    protected override async Task OnInitializedAsync()
+    {
+        GerarSenhas();
+        await CarregarDadosDashboard();
+    }
+
+    private void GerarSenhas()
+    {
+        try
+        {
+            var ano = DateTime.Now.Year;
+            var mes = DateTime.Now.Month;
+            var dia = DateTime.Now.Day;
+            var diaSemana = ((int)DateTime.Now.DayOfWeek) + 1;
+            var baseCalc = ((diaSemana + dia + mes + ano) * mes).ToString();
+
+            // Senha do Dia (30 Dias)
+            var hash30 = MD5SenhaDia.Get(baseCalc + "{CHAVE PARA 30 DIAS}").ToUpper();
+            if (hash30.Length >= 24)
+            {
+                senhaDia30 = $"{hash30[3]}{hash30[7]}{hash30[11]}{hash30[15]}{hash30[19]}{hash30[23]}";
+            }
+
+            // Senha Download XML (NFCe)
+            var hashXML = MD5SenhaDia.Get(baseCalc + "{SyncTech Info}").ToUpper();
+            if (hashXML.Length >= 32)
+            {
+                senhaDiaXML = $"{hashXML[29]}{hashXML[16]}{hashXML[7]}{hashXML[20]}{hashXML[24]}{hashXML[31]}";
+            }
+        }
+        catch (Exception ex)
+        {
+            senhaDia30 = "ERRO";
+            senhaDiaXML = "ERRO";
+            Console.WriteLine($"Erro gerando senhas: {ex.Message}");
+        }
+    }
+
+    private async Task CarregarDadosDashboard()
+    {
+        loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            totalClientes = await ctx.Clientes.AsNoTracking().CountAsync(c => !c.Desativado);
+            totalChamadosAbertos = await ctx.Chamados.AsNoTracking().CountAsync(c => c.ChamadoStatusId == 1 || c.ChamadoStatusId == 2);
+            totalProspectos = await ctx.ClienteProsp.AsNoTracking().CountAsync(p => p.Flag == 0);
+            totalParcelasAVencer = await ctx.Parcelas.AsNoTracking().CountAsync(p => p.Status == "A");
+
+            // Chamados dos últimos 6 meses
+            var dataInicial = DateTime.Now.AddMonths(-5);
+            var mesesLabels = new string[6];
+            var qtds = new double[6];
+
+            for (int i = 0; i < 6; i++)
+            {
+                var dt = dataInicial.AddMonths(i);
+                mesesLabels[i] = dt.ToString("MMM/yy").ToUpper();
+                var count = await ctx.Chamados
+                    .AsNoTracking()
+                    .CountAsync(d => d.DataAbertura.Year == dt.Year && d.DataAbertura.Month == dt.Month);
+                qtds[i] = count;
+            }
+
+            chartLabels = mesesLabels;
+            chartSeries = new List<ChartSeries<double>>
+            {
+                new ChartSeries<double> { Name = "Chamados Abertos", Data = qtds }
+            };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar dados do dashboard: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task CopiarTexto(string texto, string mensagemSucesso)
+    {
+        try
+        {
+            await JS.InvokeVoidAsync("navigator.clipboard.writeText", texto);
+            Snackbar.Add(mensagemSucesso, Severity.Success);
+        }
+        catch
+        {
+            Snackbar.Add($"Senha: {texto}", Severity.Info);
+        }
+    }
+}

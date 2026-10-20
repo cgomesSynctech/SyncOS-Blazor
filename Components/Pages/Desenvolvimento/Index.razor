@@ -1,0 +1,270 @@
+@page "/desenvolvimento"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject AuthService Auth
+
+<PageTitle>Demandas de Desenvolvimento - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+            <MudIcon Icon="@Icons.Material.Filled.DeveloperBoard" Class="mr-2" Color="Color.Primary" />
+            Demandas & Desenvolvimento
+        </MudText>
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+            Acompanhamento de bugs, melhorias e releases dos módulos do sistema
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="/desenvolvimento/novo">
+            Nova Demanda
+        </MudButton>
+    </div>
+</div>
+
+<!-- Filtros -->
+<MudCard Elevation="2" Class="mb-4">
+    <MudCardContent>
+        <MudGrid Spacing="2" Class="align-center">
+            <MudItem xs="12" md="4">
+                <MudTextField @bind-Value="searchString"
+                              Placeholder="Pesquisar por rótulo, descrição ou cliente..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="CarregarCards"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Clearable="true"
+                              OnClearButtonClick="LimparBusca" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="int" Value="@moduloFiltro" ValueChanged="OnModuloChanged" Label="Módulo" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                    <MudSelectItem Value="0">Todos os Módulos</MudSelectItem>
+                    @foreach (var m in modulos)
+                    {
+                        <MudSelectItem Value="@m.Id">@m.Descricao</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3">
+                <MudSelect T="int" Value="@statusFiltro" ValueChanged="OnStatusChanged" Label="Status" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                    <MudSelectItem Value="0">Todos os Status</MudSelectItem>
+                    @foreach (var s in statusList)
+                    {
+                        <MudSelectItem Value="@s.Id">@s.Descricao</MudSelectItem>
+                    }
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" md="2" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CarregarCards">
+                    Atualizar
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+<!-- Tabela de Demandas -->
+<MudTable Items="@cardsFiltrados" Hover="true" Striped="true" Elevation="2" Loading="@loading" LoadingProgressColor="Color.Primary" RowsPerPage="15">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Rótulo / Título</MudTh>
+        <MudTh>Módulo</MudTh>
+        <MudTh>Cliente</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh>Data</MudTh>
+        <MudTh Style="text-align: right;">Ações</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID">
+            <MudText Typo="Typo.body2" Style="font-weight: 700;">#@context.Id</MudText>
+        </MudTd>
+        <MudTd DataLabel="Rótulo / Título">
+            <div>
+                <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Rotulo</MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                    @(context.Descricao?.Length > 60 ? context.Descricao.Substring(0, 60) + "..." : context.Descricao)
+                </MudText>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Módulo">
+            <MudChip T="string" Size="Size.Small" Color="Color.Default" Variant="Variant.Outlined">
+                @(context.ChamadoModulo?.Descricao ?? "Geral")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Cliente">
+            <MudText Typo="Typo.body2">@(string.IsNullOrEmpty(context.ClienteNome) ? "Interno" : context.ClienteNome)</MudText>
+        </MudTd>
+        <MudTd DataLabel="Status">
+            <MudChip T="string" Color="@GetStatusColor(context.DesenvCardStatusId)" Variant="Variant.Filled" Size="Size.Small">
+                @(context.DesenvCardStatus?.Descricao ?? "Solicitado")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Data">
+            <MudText Typo="Typo.caption">@context.Data.ToString("dd/MM/yyyy")</MudText>
+        </MudTd>
+        <MudTd DataLabel="Ações" Style="text-align: right;">
+            <MudTooltip Text="Mudar Status">
+                <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz" Color="Color.Primary" Size="Size.Small" OnClick="@(() => AbrirAlterarStatus(context))" />
+            </MudTooltip>
+            <MudTooltip Text="Ver Detalhes">
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Info" Size="Size.Small" Href="@($"/desenvolvimento/detalhes/{context.Id}")" />
+            </MudTooltip>
+            <MudTooltip Text="Histórico / Timeline">
+                <MudIconButton Icon="@Icons.Material.Filled.History" Color="Color.Secondary" Size="Size.Small" Href="@($"/desenvolvimento/historico/{context.Id}")" />
+            </MudTooltip>
+            <MudTooltip Text="Editar">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Warning" Size="Size.Small" Href="@($"/desenvolvimento/editar/{context.Id}")" />
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Itens por página:" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private bool loading = true;
+    private List<DesenvCard> todosCards = new();
+    private List<DesenvCard> cardsFiltrados = new();
+    private List<ChamadoModulo> modulos = new();
+    private List<DesenvCardStatus> statusList = new();
+
+    private string searchString = "";
+    private int moduloFiltro = 0;
+    private int statusFiltro = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarFiltros();
+        await CarregarCards();
+    }
+
+    private async Task CarregarFiltros()
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            modulos = await ctx.ChamadoModulo.AsNoTracking().OrderBy(m => m.Descricao).ToListAsync();
+            statusList = await ctx.DesenvCardStatus
+                .AsNoTracking()
+                .Where(s => s.Id > 0 && s.Id != 100 && s.Id != 9)
+                .OrderBy(s => s.Id)
+                .ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar filtros: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task CarregarCards()
+    {
+        loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            todosCards = await ctx.DesenvCard
+                .Include(c => c.ChamadoModulo)
+                .Include(c => c.DesenvCardStatus)
+                .Include(c => c.Usuario)
+                .AsNoTracking()
+                .OrderByDescending(c => c.Id)
+                .ToListAsync();
+
+            AplicarFiltros();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar demandas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void AplicarFiltros()
+    {
+        var query = todosCards.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            var termo = searchString.Trim().ToLower();
+            query = query.Where(c =>
+                (c.Rotulo != null && c.Rotulo.ToLower().Contains(termo)) ||
+                (c.Descricao != null && c.Descricao.ToLower().Contains(termo)) ||
+                (c.ClienteNome != null && c.ClienteNome.ToLower().Contains(termo)) ||
+                (c.Id.ToString() == termo)
+            );
+        }
+
+        if (moduloFiltro > 0)
+        {
+            query = query.Where(c => c.ChamadoModuloId == moduloFiltro);
+        }
+
+        if (statusFiltro > 0)
+        {
+            query = query.Where(c => c.DesenvCardStatusId == statusFiltro);
+        }
+
+        cardsFiltrados = query.ToList();
+    }
+
+    private void OnModuloChanged(int val)
+    {
+        moduloFiltro = val;
+        AplicarFiltros();
+    }
+
+    private void OnStatusChanged(int val)
+    {
+        statusFiltro = val;
+        AplicarFiltros();
+    }
+
+    private void LimparBusca()
+    {
+        searchString = "";
+        AplicarFiltros();
+    }
+
+    private async Task AbrirAlterarStatus(DesenvCard card)
+    {
+        var parameters = new DialogParameters
+        {
+            { "CardId", card.Id },
+            { "RotuloCard", card.Rotulo },
+            { "StatusAtualId", card.DesenvCardStatusId }
+        };
+
+        var dialog = await DialogService.ShowAsync<DialogAlteraStatusDesenv>("Alterar Status", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CarregarCards();
+        }
+    }
+
+    private Color GetStatusColor(int statusId) => statusId switch
+    {
+        1 => Color.Default,
+        2 => Color.Info,
+        3 => Color.Warning,
+        4 => Color.Secondary,
+        5 => Color.Tertiary,
+        6 => Color.Success,
+        7 => Color.Success,
+        8 => Color.Success,
+        _ => Color.Primary
+    };
+}

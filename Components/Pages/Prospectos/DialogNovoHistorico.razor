@@ -1,0 +1,76 @@
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+@inject AuthService Auth
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.PostAdd" Color="Color.Primary" />
+            <MudText Typo="Typo.h6">Nova Interação / Histórico</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">
+            Prospecto: <strong>@Prospecto.Razao</strong> (Fantasia: @Prospecto.Fantasia)
+        </MudText>
+
+        <MudTextField @bind-Value="_textoHistorico" Label="Histórico / Observação da Interação *"
+                      Variant="Variant.Outlined" Lines="5"
+                      Placeholder="Descreva a conversa, reunião, feedback ou andamento da negociação..." />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Primary" Variant="Variant.Filled" OnClick="Salvar" Disabled="@_salvando">
+            @(_salvando ? "Salvando..." : "Gravar Histórico")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public ClienteProsp Prospecto { get; set; } = default!;
+
+    private string _textoHistorico = "";
+    private bool _salvando = false;
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Salvar()
+    {
+        if (string.IsNullOrWhiteSpace(_textoHistorico))
+        {
+            Snackbar.Add("Por favor, digite o histórico ou observação.", Severity.Warning);
+            return;
+        }
+
+        _salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var historico = new ClienteProspHistorico
+            {
+                Data = DateTime.Now,
+                UsuarioId = Auth.CurrentUser?.Id ?? 1,
+                ClienteProspId = Prospecto.Id,
+                Historico = _textoHistorico.Trim()
+            };
+
+            ctx.ClienteProspHistorico.Add(historico);
+            await ctx.SaveChangesAsync();
+
+            Snackbar.Add("Histórico gravado com sucesso!", Severity.Success);
+            MudDialog.Close(DialogResult.Ok(true));
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao gravar histórico: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+}

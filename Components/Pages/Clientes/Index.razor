@@ -1,0 +1,455 @@
+@page "/clientes"
+@using System.Text.RegularExpressions
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+
+<PageTitle>Clientes - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Gestão de Clientes</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Consulta, manutenção e operações cadastrais</MudText>
+    </div>
+    <div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAdd" Href="/clientes/novo">
+            Novo Cliente
+        </MudButton>
+    </div>
+</div>
+
+<MudCard Elevation="1" Class="mb-4 pa-3">
+    <MudGrid Spacing="2" Class="align-center">
+        <MudItem xs="12" md="5">
+            <MudTextField @bind-Value="_filtroTexto" Placeholder="Pesquisar por Razão, Fantasia, CNPJ ou ID..."
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true" OnKeyUp="@OnSearchKeyUp" Clearable="true" OnClearButtonClick="@ClearSearch" />
+        </MudItem>
+
+        <MudItem xs="12" md="7" Class="d-flex justify-end gap-2 flex-wrap">
+            <MudButton Variant="@(_filtroAtivo == 0 ? Variant.Filled : Variant.Outlined)" Color="Color.Default" Size="Size.Small" OnClick="@(() => FiltrarStatus(0))">
+                Todos (@_totalGeral)
+            </MudButton>
+            <MudButton Variant="@(_filtroAtivo == 1 ? Variant.Filled : Variant.Outlined)" Color="Color.Success" Size="Size.Small" OnClick="@(() => FiltrarStatus(1))">
+                Ativos
+            </MudButton>
+            <MudButton Variant="@(_filtroAtivo == 2 ? Variant.Filled : Variant.Outlined)" Color="Color.Error" Size="Size.Small" OnClick="@(() => FiltrarStatus(2))">
+                Desativados
+            </MudButton>
+            <MudButton Variant="@(_filtroAtivo == 3 ? Variant.Filled : Variant.Outlined)" Color="Color.Warning" Size="Size.Small" OnClick="@(() => FiltrarStatus(3))">
+                Pendência
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudCard>
+
+<MudTable ServerData="LoadServerData" @ref="_table" Dense="true" Hover="true" Striped="true" Elevation="1" Loading="@_loading">
+    <HeaderContent>
+        <MudTh Style="width: 80px; text-align:right;"># ID</MudTh>
+        <MudTh>Razão Social</MudTh>
+        <MudTh>Nome Fantasia</MudTh>
+        <MudTh>CPF / CNPJ</MudTh>
+        <MudTh>Contato</MudTh>
+        <MudTh>Cidade / UF</MudTh>
+        <MudTh Style="text-align:center;">Situação</MudTh>
+        <MudTh Style="text-align:right; width: 140px;">Ações</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID" Style="text-align:right; font-weight: 500;">@context.Id</MudTd>
+        <MudTd DataLabel="Razão">
+            <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 260px;">
+                @context.Razao
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="Fantasia">
+            <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 200px;">
+                @context.Fantasia
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="CNPJ">@FormatarCpfCnpj(context.CPF_CNPJ)</MudTd>
+        <MudTd DataLabel="Contato">
+            <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 140px;">@context.Contato</MudText>
+            @if (!string.IsNullOrEmpty(context.WhatsApp))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Success">
+                    <MudIcon Icon="@Icons.Custom.Brands.WhatsApp" Size="Size.Small" Style="font-size: 11px;" /> @context.WhatsApp
+                </MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Cidade/UF">
+            @(context.Municipio?.Descricao ?? "") - @context.UFId
+        </MudTd>
+        <MudTd DataLabel="Situação" Style="text-align:center;">
+            <div class="d-flex justify-center gap-1 flex-wrap">
+                @if (context.Desativado)
+                {
+                    <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Filled">Desativado</MudChip>
+                }
+                else
+                {
+                    <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined">Ativo</MudChip>
+                }
+
+                @if (context.Bloqueado)
+                {
+                    <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Filled">Bloqueado</MudChip>
+                }
+
+                @if (context.Pendencia)
+                {
+                    <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled">Pendência</MudChip>
+                }
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Ações" Style="text-align:right;">
+            <MudButtonGroup Color="Color.Default" Variant="Variant.Outlined" Size="Size.Small">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small"
+                               aria-label="Editar Cliente" OnClick="@(() => Navigation.NavigateTo($"/clientes/editar/{context.Id}"))" />
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Info" Size="Size.Small"
+                               aria-label="Detalhes" OnClick="@(() => Navigation.NavigateTo($"/clientes/detalhes/{context.Id}"))" />
+
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <MudMenuItem Icon="@(context.Bloqueado ? Icons.Material.Filled.LockOpen : Icons.Material.Filled.Lock)"
+                                 IconColor="@(context.Bloqueado ? Color.Success : Color.Warning)"
+                                 OnClick="@(() => AlternarBloqueio(context))">
+                        @(context.Bloqueado ? "Desbloquear Cliente" : "Bloquear Cliente")
+                    </MudMenuItem>
+
+                    <MudMenuItem Icon="@(context.Desativado ? Icons.Material.Filled.CheckCircle : Icons.Material.Filled.Cancel)"
+                                 IconColor="@(context.Desativado ? Color.Success : Color.Error)"
+                                 OnClick="@(() => AlternarAtivacao(context))">
+                        @(context.Desativado ? "Ativar Cliente" : "Desativar Cliente")
+                    </MudMenuItem>
+
+                    <MudMenuItem Icon="@Icons.Material.Filled.Warning" IconColor="Color.Warning"
+                                 OnClick="@(() => AbrirPendencia(context))">
+                        Pendência Financeira
+                    </MudMenuItem>
+
+                    <MudMenuItem Icon="@Icons.Material.Filled.ControlPointDuplicate" IconColor="Color.Primary"
+                                 OnClick="@(() => CriarBaseControle(context))">
+                        Gerar Base de Controle
+                    </MudMenuItem>
+
+                    @if (!string.IsNullOrEmpty(context.TokenAtualiza))
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.KeyOff" IconColor="Color.Secondary"
+                                     OnClick="@(() => ZerarToken(context))">
+                            Zerar Token
+                        </MudMenuItem>
+                    }
+
+                    <MudMenuItem Icon="@Icons.Material.Filled.ConfirmationNumber" IconColor="Color.Info"
+                                 OnClick="@(() => Navigation.NavigateTo($"/chamados/novo/{context.Id}"))">
+                        Abrir Chamado
+                    </MudMenuItem>
+
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
+                                 OnClick="@(() => ExcluirCliente(context))">
+                        Excluir Cliente
+                    </MudMenuItem>
+                </MudMenu>
+            </MudButtonGroup>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Align="Align.Center" Class="py-6 text-muted">Nenhum cliente encontrado com os filtros aplicados.</MudText>
+    </NoRecordsContent>
+    <LoadingContent>
+        <MudText Align="Align.Center" Class="py-6">Carregando clientes...</MudText>
+    </LoadingContent>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="Registros por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<Cliente> _table = default!;
+    private string _filtroTexto = "";
+    private int _filtroAtivo = 1; // Padrão: Apenas Ativos como era usado
+    private bool _loading = false;
+    private int _totalGeral = 0;
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            _totalGeral = await ctx.Clientes.CountAsync();
+        }
+        catch (Exception) { }
+    }
+
+    private async Task<TableData<Cliente>> LoadServerData(TableState state, CancellationToken cancellationToken)
+    {
+        _loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            IQueryable<Cliente> query = ctx.Clientes
+                .AsNoTracking()
+                .Include(c => c.Municipio)
+                .Include(c => c.Revenda)
+                .Include(c => c.UF);
+
+            var filtro = (_filtroTexto ?? "").Trim().ToUpper();
+
+            if (!string.IsNullOrWhiteSpace(filtro))
+            {
+                if ("0123456789".IndexOf(filtro[0]) > -1)
+                {
+                    query = query.Where(w => (w.CPF_CNPJ != null && w.CPF_CNPJ.Contains(filtro)) || w.Id.ToString().Contains(filtro));
+                }
+                else if (filtro.StartsWith("*"))
+                {
+                    var termo = filtro[1..];
+                    query = query.Where(w => (w.Fantasia != null && w.Fantasia.ToUpper().Contains(termo)) || (w.Razao != null && w.Razao.ToUpper().Contains(termo)));
+                }
+                else
+                {
+                    query = query.Where(w => (w.Fantasia != null && w.Fantasia.ToUpper().StartsWith(filtro)) || (w.Razao != null && w.Razao.ToUpper().StartsWith(filtro)));
+                }
+            }
+
+            switch (_filtroAtivo)
+            {
+                case 1:
+                    query = query.Where(w => !w.Desativado);
+                    break;
+                case 2:
+                    query = query.Where(w => w.Desativado);
+                    break;
+                case 3:
+                    query = query.Where(w => w.Pendencia);
+                    break;
+            }
+
+            var totalItems = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderBy(c => c.Razao)
+                .Skip(state.Page * state.PageSize)
+                .Take(state.PageSize)
+                .ToListAsync(cancellationToken);
+
+            return new TableData<Cliente> { TotalItems = totalItems, Items = items };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar dados: {ex.Message}", Severity.Error);
+            return new TableData<Cliente> { TotalItems = 0, Items = new List<Cliente>() };
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void FiltrarStatus(int status)
+    {
+        _filtroAtivo = status;
+        _table.ReloadServerData();
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            _table.ReloadServerData();
+        }
+    }
+
+    private void ClearSearch()
+    {
+        _filtroTexto = "";
+        _table.ReloadServerData();
+    }
+
+    private async Task AlternarBloqueio(Cliente cliente)
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var item = await ctx.Clientes.FindAsync(cliente.Id);
+            if (item != null)
+            {
+                item.Bloqueado = !item.Bloqueado;
+                ctx.Update(item);
+                await ctx.SaveChangesAsync();
+
+                _ = Task.Run(() => new EspelharCliente(ctx, item).Salvar());
+
+                cliente.Bloqueado = item.Bloqueado;
+                var msg = item.Bloqueado ? $"Cliente {item.Fantasia} Bloqueado com sucesso." : $"Cliente {item.Fantasia} Desbloqueado com sucesso.";
+                Snackbar.Add(msg, Severity.Success);
+                await _table.ReloadServerData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao alterar bloqueio: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AlternarAtivacao(Cliente cliente)
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var item = await ctx.Clientes.FindAsync(cliente.Id);
+            if (item != null)
+            {
+                item.Desativado = !item.Desativado;
+                item.Bloqueado = false;
+                ctx.Update(item);
+                await ctx.SaveChangesAsync();
+
+                _ = Task.Run(() => new EspelharCliente(ctx, item).Salvar());
+
+                cliente.Desativado = item.Desativado;
+                cliente.Bloqueado = item.Bloqueado;
+                var msg = item.Desativado ? $"Cliente {item.Fantasia} Desativado com sucesso." : $"Cliente {item.Fantasia} Ativado com sucesso.";
+                Snackbar.Add(msg, Severity.Success);
+                await _table.ReloadServerData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao alterar ativação: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task AbrirPendencia(Cliente cliente)
+    {
+        var parameters = new DialogParameters<DialogPendencia> { { x => x.Cliente, cliente } };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DialogPendencia>("Pendência Financeira", parameters, options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+    private async Task CriarBaseControle(Cliente cliente)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Gerar Base de Controle",
+            $"Deseja gerar uma réplica de controle para o cliente '{cliente.Fantasia}'?",
+            yesText: "Confirmar", cancelText: "Cancelar");
+
+        if (confirm != true) return;
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var original = await ctx.Clientes.AsNoTracking().FirstOrDefaultAsync(c => c.Id == cliente.Id);
+            if (original != null)
+            {
+                var aux = original;
+                aux.TokenAtualiza = null;
+                aux.RazaoFirebird = null;
+                aux.NomeFirebird = null;
+                aux.Resp_Nome = "Controle";
+                aux.Contato = "Controle";
+                aux.Endereco = "Controle";
+                aux.InscricaoEstadual = "Controle";
+                aux.Id = await NextID.GetNextId("Cliente", ctx);
+
+                if (!string.IsNullOrEmpty(aux.CPF_CNPJ))
+                {
+                    if (!aux.CPF_CNPJ.EndsWith("99"))
+                        aux.CPF_CNPJ = aux.CPF_CNPJ[..^2] + "99";
+                    else
+                        aux.CPF_CNPJ = aux.CPF_CNPJ[..^2] + "00";
+                }
+
+                ctx.Add(aux);
+                await ctx.SaveChangesAsync();
+
+                _ = Task.Run(() => new EspelharCliente(ctx, aux).Salvar());
+
+                Snackbar.Add($"Base de Controle gerada com ID {aux.Id} com sucesso!", Severity.Success);
+                await _table.ReloadServerData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao gerar base de controle: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ZerarToken(Cliente cliente)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Zerar Token",
+            $"Deseja realmente zerar o token do cliente '{cliente.Fantasia}'?",
+            yesText: "Confirmar", cancelText: "Cancelar");
+
+        if (confirm != true) return;
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var item = await ctx.Clientes.FindAsync(cliente.Id);
+            if (item != null)
+            {
+                item.TokenAtualiza = null;
+                item.RazaoFirebird = null;
+                item.NomeFirebird = null;
+                ctx.Update(item);
+                await ctx.SaveChangesAsync();
+
+                _ = Task.Run(() => new EspelharCliente(ctx, item).Salvar());
+
+                cliente.TokenAtualiza = null;
+                Snackbar.Add($"Token do cliente {item.Fantasia} zerado com sucesso.", Severity.Success);
+                await _table.ReloadServerData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao zerar token: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ExcluirCliente(Cliente cliente)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Excluir Cliente",
+            $"Tem certeza de que deseja excluir permanentemente o cliente '{cliente.Fantasia}' (#ID: {cliente.Id})?",
+            yesText: "Excluir", cancelText: "Cancelar");
+
+        if (confirm != true) return;
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var item = await ctx.Clientes.FindAsync(cliente.Id);
+            if (item != null)
+            {
+                ctx.Clientes.Remove(item);
+                await ctx.SaveChangesAsync();
+                Snackbar.Add($"Cliente {cliente.Fantasia} excluído com sucesso.", Severity.Success);
+                await _table.ReloadServerData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao excluir cliente: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string FormatarCpfCnpj(string doc)
+    {
+        if (string.IsNullOrWhiteSpace(doc)) return "";
+        var numeros = Regex.Replace(doc, "[^0-9]", "");
+        if (numeros.Length == 11)
+            return Convert.ToUInt64(numeros).ToString(@"000\.000\.000\-00");
+        if (numeros.Length == 14)
+            return Convert.ToUInt64(numeros).ToString(@"00\.000\.000\/0000\-00");
+        return doc;
+    }
+}

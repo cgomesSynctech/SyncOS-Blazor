@@ -1,0 +1,341 @@
+@page "/desenvolvimento/novo"
+@page "/desenvolvimento/editar/{Id:int}"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject AuthService Auth
+
+<PageTitle>@(IsEdit ? "Editar Demanda" : "Nova Demanda") - SyncOS</PageTitle>
+
+<div class="mb-4">
+    <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0 mb-2" />
+    <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+        @(IsEdit ? $"Editar Demanda #{Id}: {card.Rotulo}" : "Nova Demanda de Desenvolvimento")
+    </MudText>
+</div>
+
+@if (loading)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <MudCard Elevation="3" Class="rounded-lg">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                    <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.AddBox)" Class="mr-2" Color="Color.Primary" />
+                    Dados da Demanda / Card
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <EditForm Model="@card" OnValidSubmit="SalvarCard">
+                <DataAnnotationsValidator />
+
+                <MudTabs Elevation="0" Rounded="true" ApplyEffectsToContainer="true" TabPanelsClass="pa-4">
+                    <!-- Aba 1: Dados Gerais -->
+                    <MudTabPanel Text="Identificação e Descrição" Icon="@Icons.Material.Filled.Info">
+                        <MudGrid Spacing="3">
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="card.Rotulo"
+                                              Label="Rótulo / Título Curto *"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              Required="true"
+                                              RequiredError="Rótulo é obrigatório" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="3">
+                                <MudSelect T="int" @bind-Value="card.ChamadoModuloId" Label="Módulo do Sistema *" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                                    @foreach (var m in modulos)
+                                    {
+                                        <MudSelectItem Value="@m.Id">@m.Descricao</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" md="3">
+                                <MudSelect T="int" @bind-Value="card.DesenvCardStatusId" Label="Status Atual *" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                                    @foreach (var s in statusList)
+                                    {
+                                        <MudSelectItem Value="@s.Id">@s.Descricao</MudSelectItem>
+                                    }
+                                </MudSelect>
+                            </MudItem>
+
+                            <MudItem xs="12" md="6">
+                                <MudAutocomplete T="Cliente"
+                                                 Label="Cliente Solicitante (opcional)"
+                                                 Value="clienteSelecionado"
+                                                 ValueChanged="OnClienteChanged"
+                                                 SearchFunc="BuscarClientes"
+                                                 ToStringFunc="@(c => c == null ? "" : $"{c.Fantasia ?? c.Razao} (CNPJ: {c.CPF_CNPJ})")"
+                                                 Variant="Variant.Outlined"
+                                                 Margin="Margin.Dense"
+                                                 Dense="true"
+                                                 ResetValueOnEmptyText="true"
+                                                 Clearable="true" />
+                            </MudItem>
+
+                            <MudItem xs="12" md="6">
+                                <MudTextField @bind-Value="card.LinkBase"
+                                              Label="Link de Referência / Git / Issue"
+                                              Placeholder="https://github.com/..."
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="card.Descricao"
+                                              Label="Descrição Resumida da Necessidade *"
+                                              Variant="Variant.Outlined"
+                                              Required="true"
+                                              RequiredError="Descrição é obrigatória" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="card.Detalhes"
+                                              Label="Detalhes Técnicos / Cenário de Reprodução"
+                                              Variant="Variant.Outlined"
+                                              Lines="4" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="card.Observacao"
+                                              Label="Observações Internas"
+                                              Variant="Variant.Outlined"
+                                              Lines="2" />
+                            </MudItem>
+                        </MudGrid>
+                    </MudTabPanel>
+
+                    <!-- Aba 2: Resolução / Fechamento Técnico -->
+                    <MudTabPanel Text="Resolução & Versão" Icon="@Icons.Material.Filled.Build">
+                        <MudGrid Spacing="3">
+                            <MudItem xs="12" md="4">
+                                <MudTextField @bind-Value="card.VersaoSuapp"
+                                              Label="Versão do Sistema Disponibilizada"
+                                              Placeholder="Ex: 2.14.0"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="card.Solucao"
+                                              Label="Solução Aplicada (Resumo para o Usuário)"
+                                              Variant="Variant.Outlined"
+                                              Lines="3" />
+                            </MudItem>
+
+                            <MudItem xs="12">
+                                <MudTextField @bind-Value="card.Resolucao"
+                                              Label="Resolução Técnica (Instruções internas / script de banco)"
+                                              Variant="Variant.Outlined"
+                                              Lines="4" />
+                            </MudItem>
+                        </MudGrid>
+                    </MudTabPanel>
+                </MudTabs>
+
+                <div class="d-flex justify-end gap-3 mt-6">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/desenvolvimento">
+                        Cancelar
+                    </MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="@salvando">
+                        @if (salvando)
+                        {
+                            <MudProgressCircular Class="ms-n1 me-2" Size="Size.Small" Indeterminate="true" />
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <span>@(IsEdit ? "Salvar Alterações" : "Criar Demanda")</span>
+                        }
+                    </MudButton>
+                </div>
+            </EditForm>
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private bool IsEdit => Id.HasValue && Id.Value > 0;
+
+    private bool loading = true;
+    private bool salvando = false;
+
+    private DesenvCard card = new()
+    {
+        Data = DateTime.Now,
+        DesenvCardStatusId = 1,
+        ChamadoModuloId = 1,
+        Rotulo = "Nova Demanda"
+    };
+
+    private Cliente clienteSelecionado;
+    private List<Cliente> todosClientes = new();
+    private List<ChamadoModulo> modulos = new();
+    private List<DesenvCardStatus> statusList = new();
+
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Início", href: "/"),
+            new BreadcrumbItem("Desenvolvimento", href: "/desenvolvimento"),
+            new BreadcrumbItem(IsEdit ? "Editar" : "Novo", href: null, disabled: true)
+        };
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            modulos = await ctx.ChamadoModulo.AsNoTracking().OrderBy(m => m.Descricao).ToListAsync();
+            statusList = await ctx.DesenvCardStatus
+                .AsNoTracking()
+                .Where(s => s.Id > 0 && s.Id != 100 && s.Id != 9)
+                .OrderBy(s => s.Id)
+                .ToListAsync();
+
+            todosClientes = await ctx.Clientes
+                .AsNoTracking()
+                .Select(c => new Cliente { Id = c.Id, Razao = c.Razao, Fantasia = c.Fantasia, CPF_CNPJ = c.CPF_CNPJ })
+                .ToListAsync();
+
+            if (IsEdit)
+            {
+                var dbCard = await ctx.DesenvCard.FindAsync(Id.Value);
+                if (dbCard == null)
+                {
+                    Snackbar.Add("Card de desenvolvimento não encontrado.", Severity.Error);
+                    Navigation.NavigateTo("/desenvolvimento");
+                    return;
+                }
+                card = dbCard;
+
+                if (card.ClienteId > 0)
+                {
+                    clienteSelecionado = todosClientes.FirstOrDefault(c => c.Id == card.ClienteId);
+                }
+            }
+            else
+            {
+                card.UsuarioId = Auth.CurrentUser?.Id ?? 1;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar formulário: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private Task<IEnumerable<Cliente>> BuscarClientes(string value, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+            return Task.FromResult<IEnumerable<Cliente>>(todosClientes.Take(15));
+
+        var termo = value.Trim().ToLower();
+        var filtrados = todosClientes.Where(c =>
+            (c.Fantasia != null && c.Fantasia.ToLower().Contains(termo)) ||
+            (c.Razao != null && c.Razao.ToLower().Contains(termo)) ||
+            (c.CPF_CNPJ != null && c.CPF_CNPJ.Contains(termo))
+        ).Take(20);
+
+        return Task.FromResult(filtrados);
+    }
+
+    private void OnClienteChanged(Cliente c)
+    {
+        clienteSelecionado = c;
+        if (c != null)
+        {
+            card.ClienteId = c.Id;
+            card.ClienteNome = c.Fantasia ?? c.Razao;
+        }
+        else
+        {
+            card.ClienteId = null;
+            card.ClienteNome = "Não Informado";
+        }
+    }
+
+    private async Task SalvarCard()
+    {
+        salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            if (clienteSelecionado != null)
+            {
+                card.ClienteId = clienteSelecionado.Id;
+                card.ClienteNome = clienteSelecionado.Fantasia ?? clienteSelecionado.Razao;
+            }
+
+            if (IsEdit)
+            {
+                var dbCard = await ctx.DesenvCard.FindAsync(card.Id);
+                if (dbCard != null)
+                {
+                    dbCard.Rotulo = card.Rotulo;
+                    dbCard.Descricao = card.Descricao;
+                    dbCard.Detalhes = card.Detalhes;
+                    dbCard.Observacao = card.Observacao;
+                    dbCard.ChamadoModuloId = card.ChamadoModuloId;
+                    dbCard.DesenvCardStatusId = card.DesenvCardStatusId;
+                    dbCard.ClienteId = card.ClienteId;
+                    dbCard.ClienteNome = card.ClienteNome;
+                    dbCard.LinkBase = card.LinkBase;
+                    dbCard.Solucao = card.Solucao;
+                    dbCard.Resolucao = card.Resolucao;
+                    dbCard.VersaoSuapp = card.VersaoSuapp;
+
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add("Demanda atualizada com sucesso!", Severity.Success);
+                }
+            }
+            else
+            {
+                card.UsuarioId = Auth.CurrentUser?.Id ?? 1;
+                card.Data = DateTime.Now;
+
+                ctx.DesenvCard.Add(card);
+                await ctx.SaveChangesAsync();
+
+                // Adiciona histórico inicial automático
+                var hist = new DesenvCardHistorico
+                {
+                    DesenvCardId = card.Id,
+                    DesenvCardStatusId = card.DesenvCardStatusId,
+                    UsuarioId = card.UsuarioId,
+                    Data = DateTime.Now,
+                    Descricao = $"Demanda criada por {Auth.CurrentUser?.LoginName ?? "Sistema"}.",
+                    Detalhes = card.Descricao
+                };
+                ctx.DesenvCardHistorico.Add(hist);
+                await ctx.SaveChangesAsync();
+
+                Snackbar.Add($"Demanda #{card.Id} criada com sucesso!", Severity.Success);
+            }
+
+            Navigation.NavigateTo("/desenvolvimento");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao salvar demanda: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+}

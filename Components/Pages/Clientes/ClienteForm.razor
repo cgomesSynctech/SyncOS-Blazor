@@ -1,0 +1,387 @@
+@page "/clientes/novo"
+@page "/clientes/editar/{Id:int}"
+@using System.Text.RegularExpressions
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+
+<PageTitle>@(IsEdicao ? "Editar Cliente" : "Novo Cliente") - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">@(IsEdicao ? $"Editar Cliente #{_cliente.Id} - {_cliente.Fantasia}" : "Cadastrar Novo Cliente")</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Preencha os campos organizados por abas</MudText>
+    </div>
+    <div>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/clientes">
+            Voltar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Save" Class="ml-2" OnClick="SalvarCliente" Disabled="@_salvando">
+            @if (_salvando)
+            {
+                <MudProgressCircular Class="ms-n1" Size="Size.Small" Indeterminate="true" />
+                <MudText Class="ms-2">Salvando...</MudText>
+            }
+            else
+            {
+                <span>Salvar Cliente</span>
+            }
+        </MudButton>
+    </div>
+</div>
+
+@if (_carregando)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <EditForm Model="@_cliente" OnValidSubmit="SalvarCliente">
+        <DataAnnotationsValidator />
+
+        <MudTabs Elevation="2" Rounded="true" ApplyEffectsToContainer="true" TabPanelsClass="pa-6" Color="Color.Primary">
+            <!-- ABA 1: DADOS GERAIS -->
+            <MudTabPanel Text="Dados Principais" Icon="@Icons.Material.Filled.Business">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_cliente.Razao" Label="Razão Social *" Required="true" RequiredError="A Razão Social é obrigatória" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_cliente.Fantasia" Label="Nome Fantasia" Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.CPF_CNPJ" Label="CNPJ / CPF" Variant="Variant.Outlined" HelperText="Apenas números ou formatado" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.InscricaoEstadual" Label="Inscrição Estadual" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudSelect T="int" Label="Revenda" @bind-Value="_cliente.RevendaId" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var revenda in _revendas)
+                            {
+                                <MudSelectItem Value="@revenda.Id">@revenda.Descricao</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.Contato" Label="Pessoa de Contato" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.WhatsApp" Label="WhatsApp" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Custom.Brands.WhatsApp" AdornmentColor="Color.Success" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.Email" Label="E-mail" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" />
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+
+            <!-- ABA 2: ENDEREÇO -->
+            <MudTabPanel Text="Endereço & Localização" Icon="@Icons.Material.Filled.LocationOn">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="3">
+                        <MudTextField @bind-Value="_cliente.CEP" Label="CEP" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="7">
+                        <MudTextField @bind-Value="_cliente.Endereco" Label="Endereço / Logradouro" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="2">
+                        <MudTextField @bind-Value="_cliente.Numero" Label="Número" Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.Bairro" Label="Bairro" Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="3">
+                        <MudSelect T="string" Label="UF" Value="_cliente.UFId" ValueChanged="OnUFChanged" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter">
+                            @foreach (var uf in _ufs)
+                            {
+                                <MudSelectItem Value="@uf.Id">@uf.Descricao (@uf.Id)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" md="5">
+                        <MudSelect T="int" Label="Município" @bind-Value="_cliente.MunicipioId" Variant="Variant.Outlined" AnchorOrigin="Origin.BottomCenter" Disabled="@(!_municipios.Any())">
+                            @foreach (var mun in _municipios)
+                            {
+                                <MudSelectItem Value="@mun.Id">@mun.Descricao</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_cliente.LatitudeLongitude" Label="Coordenadas (Latitude / Longitude)" Variant="Variant.Outlined" Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Map" />
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+
+            <!-- ABA 3: RESPONSÁVEL -->
+            <MudTabPanel Text="Responsável" Icon="@Icons.Material.Filled.PersonPin">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="8">
+                        <MudTextField @bind-Value="_cliente.Resp_Nome" Label="Nome do Responsável" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.Resp_CPF" Label="CPF do Responsável" Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="8">
+                        <MudTextField @bind-Value="_cliente.Resp_Endereco" Label="Endereço do Responsável" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.Resp_Numero" Label="Número" Variant="Variant.Outlined" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.Resp_Cidade" Label="Cidade" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.Resp_UF" Label="UF" Variant="Variant.Outlined" MaxLength="2" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudTextField @bind-Value="_cliente.Resp_CEP" Label="CEP" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+
+            <!-- ABA 4: CONTRATO & VALORES -->
+            <MudTabPanel Text="Contrato & Valores" Icon="@Icons.Material.Filled.AttachMoney">
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" md="4">
+                        <MudNumericField @bind-Value="_cliente.ValorContrato" Label="Valor Manutenção (R$)" Variant="Variant.Outlined" Format="N2" Culture="@_culturaPtBr" Adornment="Adornment.Start" AdornmentText="R$" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudNumericField @bind-Value="_cliente.ValorContratoBackup" Label="Valor Backup (R$)" Variant="Variant.Outlined" Format="N2" Culture="@_culturaPtBr" Adornment="Adornment.Start" AdornmentText="R$" />
+                    </MudItem>
+                    <MudItem xs="12" md="4">
+                        <MudNumericField @bind-Value="_cliente.ValorSped" Label="Valor SPED (R$)" Variant="Variant.Outlined" Format="N2" Culture="@_culturaPtBr" Adornment="Adornment.Start" AdornmentText="R$" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudNumericField @bind-Value="_cliente.ValorComissao" Label="Valor Comissão (R$)" Variant="Variant.Outlined" Format="N2" Culture="@_culturaPtBr" Adornment="Adornment.Start" AdornmentText="R$" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_cliente.Vendedor" Label="Vendedor Responsável" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+
+            <!-- ABA 5: MÓDULOS & FISCAIS -->
+            <MudTabPanel Text="Módulos & Fiscais" Icon="@Icons.Material.Filled.Apps">
+                <MudText Typo="Typo.subtitle1" Class="mb-3 font-weight-bold">Módulos Contratados</MudText>
+                <MudGrid Class="mb-4">
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudCheckBox @bind-Value="_cliente.Retaguarda" Label="Retaguarda" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudCheckBox @bind-Value="_cliente.Nf" Label="NF-e" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudCheckBox @bind-Value="_cliente.Nfc" Label="NFC-e" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudCheckBox @bind-Value="_cliente.MDF" Label="MDF-e" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudCheckBox @bind-Value="_cliente.VipShop" Label="VipShop" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudCheckBox @bind-Value="_cliente.Sped" Label="SPED" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudCheckBox @bind-Value="_cliente.Backup" Label="Backup" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudCheckBox @bind-Value="_cliente.TEF" Label="TEF" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudCheckBox @bind-Value="_cliente.Certificado" Label="Certificado" Color="Color.Primary" />
+                    </MudItem>
+                    <MudItem xs="6" sm="4" md="2">
+                        <MudCheckBox @bind-Value="_cliente.Outros" Label="Outros" Color="Color.Primary" />
+                    </MudItem>
+                    @if (_cliente.Outros)
+                    {
+                        <MudItem xs="12" md="4">
+                            <MudTextField @bind-Value="_cliente.EspecieOutros" Label="Especificação Outros" Variant="Variant.Outlined" Margin="Margin.Dense" />
+                        </MudItem>
+                    }
+                </MudGrid>
+
+                <MudDivider Class="my-4" />
+
+                <MudText Typo="Typo.subtitle1" Class="mb-3 font-weight-bold">Chaves de Integração Fiscal</MudText>
+                <MudGrid Spacing="3">
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="_cliente.ChaveFlexDocs" Label="Chave FlexDocs" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_cliente.ChaveCSC" Label="Chave CSC" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_cliente.ChaveManifesto" Label="Chave Manifesto" Variant="Variant.Outlined" />
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+        </MudTabs>
+
+        <div class="d-flex justify-end mt-4">
+            <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/clientes" Class="mr-2">Cancelar</MudButton>
+            <MudButton Variant="Variant.Filled" Color="Color.Primary" ButtonType="ButtonType.Submit" StartIcon="@Icons.Material.Filled.Save" Disabled="@_salvando">
+                Salvar Alterações
+            </MudButton>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEdicao => Id.HasValue && Id.Value > 0;
+    private Cliente _cliente = new();
+    private List<UF> _ufs = new();
+    private List<Municipio> _municipios = new();
+    private List<Revenda> _revendas = new();
+
+    private bool _carregando = true;
+    private bool _salvando = false;
+    private System.Globalization.CultureInfo _culturaPtBr = new("pt-BR");
+
+    protected override async Task OnInitializedAsync()
+    {
+        _carregando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            _ufs = await ctx.UFs.OrderBy(u => u.Descricao).ToListAsync();
+            _revendas = await ctx.Revendas.OrderBy(r => r.Descricao).ToListAsync();
+
+            if (IsEdicao)
+            {
+                var encontrado = await ctx.Clientes.FirstOrDefaultAsync(c => c.Id == Id.Value);
+                if (encontrado != null)
+                {
+                    _cliente = encontrado;
+                    if (!string.IsNullOrEmpty(_cliente.UFId))
+                    {
+                        _municipios = await ctx.Municipios
+                            .Where(m => m.UFId == _cliente.UFId)
+                            .OrderBy(m => m.Descricao)
+                            .ToListAsync();
+                    }
+                }
+                else
+                {
+                    Snackbar.Add("Cliente não encontrado.", Severity.Warning);
+                    Navigation.NavigateTo("/clientes");
+                    return;
+                }
+            }
+            else
+            {
+                _cliente = new Cliente
+                {
+                    UFId = "PB",
+                    RevendaId = _revendas.FirstOrDefault()?.Id ?? 1,
+                    Bloqueado = true,
+                    Desativado = false,
+                    DataInclusao = DateTime.Now,
+                    DataAlteracao = DateTime.UtcNow
+                };
+
+                _municipios = await ctx.Municipios
+                    .Where(m => m.UFId == "PB")
+                    .OrderBy(m => m.Descricao)
+                    .ToListAsync();
+
+                _cliente.MunicipioId = _municipios.FirstOrDefault()?.Id ?? 0;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao inicializar formulário: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task OnUFChanged(string novaUF)
+    {
+        _cliente.UFId = novaUF;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            _municipios = await ctx.Municipios
+                .Where(m => m.UFId == novaUF)
+                .OrderBy(m => m.Descricao)
+                .ToListAsync();
+
+            _cliente.MunicipioId = _municipios.FirstOrDefault()?.Id ?? 0;
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar cidades: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task SalvarCliente()
+    {
+        if (string.IsNullOrWhiteSpace(_cliente.Razao))
+        {
+            Snackbar.Add("Razão Social é obrigatória.", Severity.Warning);
+            return;
+        }
+
+        _salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            if (!string.IsNullOrEmpty(_cliente.CPF_CNPJ))
+                _cliente.CPF_CNPJ = Regex.Replace(_cliente.CPF_CNPJ, "[^0-9]", "");
+            if (!string.IsNullOrEmpty(_cliente.InscricaoEstadual))
+                _cliente.InscricaoEstadual = Regex.Replace(_cliente.InscricaoEstadual, "[^0-9]", "");
+            if (!string.IsNullOrEmpty(_cliente.CEP))
+                _cliente.CEP = Regex.Replace(_cliente.CEP, "[^0-9]", "");
+
+            _cliente.DataAlteracao = DateTime.UtcNow;
+
+            if (IsEdicao)
+            {
+                ctx.Update(_cliente);
+                await ctx.SaveChangesAsync();
+                _ = Task.Run(() => new EspelharCliente(ctx, _cliente).Salvar());
+                Snackbar.Add($"Cliente '{_cliente.Fantasia}' atualizado com sucesso!", Severity.Success);
+            }
+            else
+            {
+                _cliente.Id = await NextID.GetNextId("Cliente", ctx);
+                _cliente.Bloqueado = true;
+                _cliente.Desativado = false;
+                _cliente.DataInclusao = DateTime.Now;
+
+                ctx.Add(_cliente);
+                await ctx.SaveChangesAsync();
+                _ = Task.Run(() => new EspelharCliente(ctx, _cliente).Salvar());
+                Snackbar.Add($"Cliente '{_cliente.Fantasia}' cadastrado com sucesso (ID: {_cliente.Id})!", Severity.Success);
+            }
+
+            Navigation.NavigateTo("/clientes");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao salvar cliente: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+}

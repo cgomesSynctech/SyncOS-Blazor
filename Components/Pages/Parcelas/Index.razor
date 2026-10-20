@@ -1,0 +1,406 @@
+@page "/parcelas"
+@using System.Text.RegularExpressions
+@using syncos_Blazor.Services
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ParcelaStatusService ParcelaStatusService
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Controle de Parcelas - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+            <MudIcon Icon="@Icons.Material.Filled.ReceiptLong" Class="mr-2" Color="Color.Primary" />
+            Controle de Parcelas & Mensalidades
+        </MudText>
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+            Gestão financeira de títulos a vencer, inadimplência e baixas efetuadas
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Warning" StartIcon="@Icons.Material.Filled.Bolt" Href="/parcelas/gerador">
+            Geração em Lote
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Add" Href="/parcelas/novo">
+            Nova Parcela
+        </MudButton>
+    </div>
+</div>
+
+<!-- Cards de Resumo Financeiro / Indicadores -->
+<MudGrid Class="mb-4">
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="rounded-lg">
+            <MudCardContent Class="d-flex justify-space-between align-center pa-3">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">TOTAL A VENCER</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Warning" Style="font-weight: 700;">@totalValorAVencer.ToString("C")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@qtdAVencer parcelas</MudText>
+                </div>
+                <MudAvatar Color="Color.Warning" Variant="Variant.Filled">
+                    <MudIcon Icon="@Icons.Material.Filled.HourglassTop" />
+                </MudAvatar>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="rounded-lg">
+            <MudCardContent Class="d-flex justify-space-between align-center pa-3">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">TOTAL VENCIDO</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Error" Style="font-weight: 700;">@totalValorVencido.ToString("C")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@qtdVencidas parcelas</MudText>
+                </div>
+                <MudAvatar Color="Color.Error" Variant="Variant.Filled">
+                    <MudIcon Icon="@Icons.Material.Filled.Warning" />
+                </MudAvatar>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="rounded-lg">
+            <MudCardContent Class="d-flex justify-space-between align-center pa-3">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">TOTAL LIQUIDADO</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Success" Style="font-weight: 700;">@totalValorLiquidado.ToString("C")</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@qtdLiquidadas parcelas</MudText>
+                </div>
+                <MudAvatar Color="Color.Success" Variant="Variant.Filled">
+                    <MudIcon Icon="@Icons.Material.Filled.CheckCircle" />
+                </MudAvatar>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+
+    <MudItem xs="12" sm="6" md="3">
+        <MudCard Elevation="2" Class="rounded-lg">
+            <MudCardContent Class="d-flex justify-space-between align-center pa-3">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">GERAL EM CARTEIRA</MudText>
+                    <MudText Typo="Typo.h6" Color="Color.Primary" Style="font-weight: 700;">@((totalValorAVencer + totalValorVencido + totalValorLiquidado).ToString("C"))</MudText>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">@(qtdAVencer + qtdVencidas + qtdLiquidadas) títulos</MudText>
+                </div>
+                <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                    <MudIcon Icon="@Icons.Material.Filled.AccountBalanceWallet" />
+                </MudAvatar>
+            </MudCardContent>
+        </MudCard>
+    </MudItem>
+</MudGrid>
+
+<!-- Filtros e Pesquisa -->
+<MudCard Elevation="2" Class="mb-4">
+    <MudCardContent>
+        <MudGrid Spacing="2" Class="align-center">
+            <MudItem xs="12" md="5">
+                <MudTextField @bind-Value="searchString"
+                              Placeholder="Pesquisar por nome do cliente ou CPF/CNPJ..."
+                              Adornment="Adornment.Start"
+                              AdornmentIcon="@Icons.Material.Filled.Search"
+                              Immediate="true"
+                              DebounceInterval="300"
+                              OnDebounceIntervalElapsed="CarregarParcelas"
+                              Variant="Variant.Outlined"
+                              Margin="Margin.Dense"
+                              Clearable="true"
+                              OnClearButtonClick="LimparBusca" />
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="4">
+                <MudSelect T="string" Value="@statusFiltro" ValueChanged="OnStatusChanged" Label="Status do Título" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                    <MudSelectItem Value="@("")">Todos os Status</MudSelectItem>
+                    <MudSelectItem Value="@("A")">A Vencer</MudSelectItem>
+                    <MudSelectItem Value="@("V")">Vencidos</MudSelectItem>
+                    <MudSelectItem Value="@("L")">Liquidados / Pagos</MudSelectItem>
+                </MudSelect>
+            </MudItem>
+
+            <MudItem xs="12" sm="6" md="3" Class="d-flex justify-end">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.Refresh" OnClick="CarregarParcelas">
+                    Atualizar
+                </MudButton>
+            </MudItem>
+        </MudGrid>
+    </MudCardContent>
+</MudCard>
+
+<!-- Tabela de Parcelas -->
+<MudTable Items="@parcelasFiltradas" Hover="true" Striped="true" Elevation="2" Loading="@loading" LoadingProgressColor="Color.Primary" RowsPerPage="15">
+    <HeaderContent>
+        <MudTh>ID</MudTh>
+        <MudTh>Cliente</MudTh>
+        <MudTh>CPF / CNPJ</MudTh>
+        <MudTh>Vencimento</MudTh>
+        <MudTh Style="text-align: right;">Valor (R$)</MudTh>
+        <MudTh Style="text-align: center;">Status</MudTh>
+        <MudTh Style="text-align: right;">Ações</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID">
+            <MudText Typo="Typo.body2" Style="font-weight: 700;">#@context.Id</MudText>
+        </MudTd>
+        <MudTd DataLabel="Cliente">
+            <div>
+                <MudLink Href="@($"/clientes/detalhes/{context.ClienteId}")" Style="font-weight: 600; text-decoration: none;">
+                    @context.NomeCliente
+                </MudLink>
+                @if (!string.IsNullOrWhiteSpace(context.Email) || !string.IsNullOrWhiteSpace(context.Fone))
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="display: block;">
+                        @(FormatTelefone(context.Fone)) @(string.IsNullOrEmpty(context.Email) ? "" : $"| {context.Email}")
+                    </MudText>
+                }
+            </div>
+        </MudTd>
+        <MudTd DataLabel="CPF / CNPJ">
+            <MudText Typo="Typo.body2" Style="font-family: monospace;">@FormatCgcCpf(context.CPFCNPJ)</MudText>
+        </MudTd>
+        <MudTd DataLabel="Vencimento">
+            <div class="d-flex flex-column">
+                <MudText Typo="Typo.body2" Style="@(context.Status != "L" && context.DataVencimento < DateTime.Today ? "color: red; font-weight: 700;" : "")">
+                    @context.DataVencimento.ToString("dd/MM/yyyy")
+                </MudText>
+                @if (context.Status == "L" && context.DataPagamento.HasValue)
+                {
+                    <MudText Typo="Typo.caption" Color="Color.Success">
+                        Pago: @context.DataPagamento.Value.ToString("dd/MM/yyyy")
+                    </MudText>
+                }
+            </div>
+        </MudTd>
+        <MudTd DataLabel="Valor (R$)" Style="text-align: right;">
+            <MudText Typo="Typo.body2" Style="font-weight: 700;">@context.Valor.ToString("C")</MudText>
+            @if (context.Juros.HasValue && context.Juros.Value > 0)
+            {
+                <MudText Typo="Typo.caption" Color="Color.Error" Style="display: block;">
+                    Juros: @context.Juros.Value.ToString("C")
+                </MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Status" Style="text-align: center;">
+            <MudChip T="string" Color="@GetStatusColor(context.Status)" Size="Size.Small" Variant="Variant.Filled">
+                @GetStatusDescricao(context.Status)
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Ações" Style="text-align: right;">
+            @if (context.Status != "L")
+            {
+                <MudTooltip Text="Liquidar / Baixar Título">
+                    <MudIconButton Icon="@Icons.Material.Filled.CheckCircle" Color="Color.Success" Size="Size.Small" OnClick="@(() => LiquidarParcela(context))" />
+                </MudTooltip>
+            }
+            <MudTooltip Text="Ver Detalhes">
+                <MudIconButton Icon="@Icons.Material.Filled.Visibility" Color="Color.Info" Size="Size.Small" Href="@($"/parcelas/detalhes/{context.Id}")" />
+            </MudTooltip>
+            <MudTooltip Text="Editar">
+                <MudIconButton Icon="@Icons.Material.Filled.Edit" Color="Color.Primary" Size="Size.Small" Href="@($"/parcelas/editar/{context.Id}")" />
+            </MudTooltip>
+            <MudTooltip Text="Excluir">
+                <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => ConfirmarExclusao(context))" />
+            </MudTooltip>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Class="pa-4 text-center" Color="Color.Secondary">Nenhuma parcela encontrada.</MudText>
+    </NoRecordsContent>
+    <PagerContent>
+        <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Itens por página:" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private bool loading = true;
+    private List<Parcela> todasParcelas = new();
+    private List<Parcela> parcelasFiltradas = new();
+
+    private string searchString = "";
+    private string statusFiltro = "";
+
+    // Indicadores KPI
+    private decimal totalValorAVencer;
+    private decimal totalValorVencido;
+    private decimal totalValorLiquidado;
+    private int qtdAVencer;
+    private int qtdVencidas;
+    private int qtdLiquidadas;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarParcelas();
+    }
+
+    private async Task CarregarParcelas()
+    {
+        loading = true;
+        try
+        {
+            // Executa a verificação e atualização no SQL Server uma única vez no dia
+            // (se já rodou hoje, retorna instantaneamente em 0 ms sem consumir o banco)
+            await ParcelaStatusService.VerificarEAtualizarAsync();
+
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            todasParcelas = await ctx.Parcelas
+                .Include(p => p.Cliente)
+                .AsNoTracking()
+                .OrderBy(p => p.DataVencimento)
+                .ToListAsync();
+
+            CalcularTotais();
+            AplicarFiltros();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar parcelas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private void CalcularTotais()
+    {
+        totalValorAVencer = todasParcelas.Where(p => p.Status == "A").Sum(p => p.Valor);
+        totalValorVencido = todasParcelas.Where(p => p.Status == "V").Sum(p => p.Valor);
+        totalValorLiquidado = todasParcelas.Where(p => p.Status == "L").Sum(p => p.Valor);
+
+        qtdAVencer = todasParcelas.Count(p => p.Status == "A");
+        qtdVencidas = todasParcelas.Count(p => p.Status == "V");
+        qtdLiquidadas = todasParcelas.Count(p => p.Status == "L");
+    }
+
+    private void AplicarFiltros()
+    {
+        var query = todasParcelas.AsEnumerable();
+
+        if (!string.IsNullOrWhiteSpace(searchString))
+        {
+            var termo = searchString.Trim().ToLower();
+            query = query.Where(p =>
+                (p.NomeCliente != null && p.NomeCliente.ToLower().Contains(termo)) ||
+                (p.CPFCNPJ != null && p.CPFCNPJ.Contains(termo)) ||
+                (p.Email != null && p.Email.ToLower().Contains(termo)) ||
+                (p.Fone != null && p.Fone.Contains(termo))
+            );
+        }
+
+        if (!string.IsNullOrWhiteSpace(statusFiltro))
+        {
+            query = query.Where(p => p.Status == statusFiltro);
+        }
+
+        parcelasFiltradas = query.ToList();
+    }
+
+    private void OnStatusChanged(string val)
+    {
+        statusFiltro = val;
+        AplicarFiltros();
+    }
+
+    private void LimparBusca()
+    {
+        searchString = "";
+        AplicarFiltros();
+    }
+
+    private async Task LiquidarParcela(Parcela parcela)
+    {
+        bool? confirmar = await DialogService.ShowMessageBoxAsync(
+            "Liquidar Parcela",
+            $"Confirmar o recebimento e liquidação da parcela de {parcela.NomeCliente} no valor de {parcela.Valor.ToString("C")}?",
+            yesText: "Sim, Liquidar", cancelText: "Cancelar");
+
+        if (confirmar == true)
+        {
+            try
+            {
+                using var ctx = await DbFactory.CreateDbContextAsync();
+                var dbParcela = await ctx.Parcelas.FindAsync(parcela.Id);
+                if (dbParcela != null)
+                {
+                    dbParcela.Status = "L";
+                    dbParcela.ValorPago = dbParcela.Valor + (dbParcela.Juros ?? 0);
+                    dbParcela.DataPagamento = DateTime.Today;
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add($"Parcela de {parcela.NomeCliente} liquidada com sucesso!", Severity.Success);
+                    await CarregarParcelas();
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Erro ao liquidar parcela: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private async Task ConfirmarExclusao(Parcela parcela)
+    {
+        bool? confirmar = await DialogService.ShowMessageBoxAsync(
+            "Excluir Parcela",
+            $"Atenção! Deseja realmente excluir a parcela de {parcela.NomeCliente} no valor de {parcela.Valor.ToString("C")} com vencimento em {parcela.DataVencimento:dd/MM/yyyy}?",
+            yesText: "Excluir", cancelText: "Cancelar");
+
+        if (confirmar == true)
+        {
+            try
+            {
+                using var ctx = await DbFactory.CreateDbContextAsync();
+                var dbParcela = await ctx.Parcelas.FindAsync(parcela.Id);
+                if (dbParcela != null)
+                {
+                    ctx.Parcelas.Remove(dbParcela);
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add("Parcela excluída com sucesso!", Severity.Success);
+                    await CarregarParcelas();
+                }
+            }
+            catch (Exception ex)
+            {
+                Snackbar.Add($"Erro ao excluir parcela: {ex.Message}", Severity.Error);
+            }
+        }
+    }
+
+    private string GetStatusDescricao(string status) => status switch
+    {
+        "A" => "A Vencer",
+        "V" => "Vencido",
+        "L" => "Liquidado",
+        _ => status ?? "-"
+    };
+
+    private Color GetStatusColor(string status) => status switch
+    {
+        "A" => Color.Warning,
+        "V" => Color.Error,
+        "L" => Color.Success,
+        _ => Color.Default
+    };
+
+    private string FormatCgcCpf(string doc)
+    {
+        if (string.IsNullOrEmpty(doc)) return "-";
+        var nums = Regex.Replace(doc, @"[^\d]", "");
+        if (nums.Length == 11)
+            return $"{nums.Substring(0, 3)}.{nums.Substring(3, 3)}.{nums.Substring(6, 3)}-{nums.Substring(9, 2)}";
+        if (nums.Length == 14)
+            return $"{nums.Substring(0, 2)}.{nums.Substring(2, 3)}.{nums.Substring(5, 3)}/{nums.Substring(8, 4)}-{nums.Substring(12, 2)}";
+        return doc;
+    }
+
+    private string FormatTelefone(string tel)
+    {
+        if (string.IsNullOrEmpty(tel)) return "";
+        var nums = Regex.Replace(tel, @"[^\d]", "");
+        if (nums.Length == 10)
+            return $"({nums.Substring(0, 2)}) {nums.Substring(2, 4)}-{nums.Substring(6, 4)}";
+        if (nums.Length == 11)
+            return $"({nums.Substring(0, 2)}) {nums.Substring(2, 5)}-{nums.Substring(7, 4)}";
+        return tel;
+    }
+}

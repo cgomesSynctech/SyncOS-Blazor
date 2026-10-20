@@ -1,0 +1,405 @@
+@page "/prospectos"
+@using System.Text.RegularExpressions
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject AuthService Auth
+
+<PageTitle>Prospecção - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Funil de Prospecção & Vendas</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Gestão de oportunidades comerciais, etapas do funil e conversão de leads</MudText>
+    </div>
+    <div>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.PersonAddAlt1" Href="/prospectos/novo">
+            Novo Prospecto
+        </MudButton>
+    </div>
+</div>
+
+<MudCard Elevation="1" Class="mb-4 pa-3">
+    <MudGrid Spacing="2" Class="align-center">
+        <MudItem xs="12" md="4">
+            <MudTextField @bind-Value="_filtroTexto" Placeholder="Pesquisar por Razão, Fantasia, CNPJ ou Contato..."
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true" OnKeyUp="@OnSearchKeyUp" Clearable="true" OnClearButtonClick="@ClearSearch" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="int" Value="_filtroSetor" ValueChanged="@OnSetorChanged" Label="Setor / Etapa" Dense="true" Margin="Margin.Dense">
+                <MudSelectItem Value="100">Todos os Setores</MudSelectItem>
+                @foreach (var set in _setores)
+                {
+                    <MudSelectItem Value="@set.Id">@set.Descricao</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="int" Value="_filtroStatus" ValueChanged="@OnStatusChanged" Label="Status" Dense="true" Margin="Margin.Dense">
+                <MudSelectItem Value="100">Todos os Status</MudSelectItem>
+                @foreach (var st in _statusList)
+                {
+                    <MudSelectItem Value="@st.Id">@st.Descricao</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" md="2" Class="d-flex justify-end">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" Size="Size.Small" OnClick="@ResetFiltros" StartIcon="@Icons.Material.Filled.FilterAltOff">
+                Limpar
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudCard>
+
+<MudTable ServerData="LoadServerData" @ref="_table" Dense="true" Hover="true" Striped="true" Elevation="1" Loading="@_loading">
+    <HeaderContent>
+        <MudTh Style="width: 70px; text-align:center;"># ID</MudTh>
+        <MudTh>Razão Social / Fantasia</MudTh>
+        <MudTh>CPF / CNPJ</MudTh>
+        <MudTh>Contato / WhatsApp</MudTh>
+        <MudTh>Setor / Etapa</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh Style="text-align:right;">Implantação / Mensal</MudTh>
+        <MudTh Style="text-align:right; width: 140px;">Ações</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID" Style="text-align:center; font-weight: 600;">@context.Id</MudTd>
+        <MudTd DataLabel="Razão">
+            <div class="d-flex flex-column">
+                <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 240px; font-weight: 600;">
+                    @context.Razao
+                </MudText>
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="text-truncate" Style="max-width: 240px;">
+                    Fantasia: @context.Fantasia
+                </MudText>
+            </div>
+        </MudTd>
+        <MudTd DataLabel="CNPJ">
+            <MudText Typo="Typo.body2">@FormatarCpfCnpj(context.CPF_CNPJ)</MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                @(context.Municipio?.Descricao) - @context.UFId
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="Contato">
+            <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 140px;">@context.Contato</MudText>
+            @if (!string.IsNullOrEmpty(context.WhatsApp))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Success">
+                    <MudIcon Icon="@Icons.Custom.Brands.WhatsApp" Size="Size.Small" Style="font-size: 11px;" /> @context.WhatsApp
+                </MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Setor">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetSetorColor(context.SetorId)">
+                @(context.Setor?.Descricao ?? $"Setor {context.SetorId}")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Status">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetStatusColor(context.StatusId)">
+                @(context.Status?.Descricao ?? $"Status {context.StatusId}")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Valores" Style="text-align:right;">
+            <MudText Typo="Typo.body2" Style="font-weight: 500;">
+                @((context.ValorNegociacao ?? 0.0).ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")))
+            </MudText>
+            <MudText Typo="Typo.caption" Color="Color.Secondary">
+                Mensal: @((context.ValorManutencaoNegociacao ?? 0.0).ToString("C2", System.Globalization.CultureInfo.GetCultureInfo("pt-BR")))
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="Ações" Style="text-align:right;">
+            @if (context.Flag == 1)
+            {
+                <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Check">
+                    Promovido
+                </MudChip>
+                <MudTooltip Text="Ver Histórico">
+                    <MudIconButton Icon="@Icons.Material.Filled.History" Color="Color.Default" Size="Size.Small"
+                                   OnClick="@(() => Navigation.NavigateTo($"/prospectos/historico/{context.Id}"))" />
+                </MudTooltip>
+            }
+            else
+            {
+                <MudButtonGroup Color="Color.Default" Variant="Variant.Outlined" Size="Size.Small">
+                    <MudTooltip Text="Efetivar Venda (Promover)">
+                        <MudIconButton Icon="@Icons.Material.Filled.ThumbUp" Color="Color.Success" Size="Size.Small"
+                                       OnClick="@(() => Navigation.NavigateTo($"/prospectos/efetivar/{context.Id}"))" />
+                    </MudTooltip>
+
+                    <MudTooltip Text="Histórico">
+                        <MudIconButton Icon="@Icons.Material.Filled.History" Color="Color.Info" Size="Size.Small"
+                                       OnClick="@(() => Navigation.NavigateTo($"/prospectos/historico/{context.Id}"))" />
+                    </MudTooltip>
+
+                    <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                        <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Primary"
+                                     OnClick="@(() => Navigation.NavigateTo($"/prospectos/editar/{context.Id}"))">
+                            Editar Prospecto
+                        </MudMenuItem>
+
+                        <MudMenuItem Icon="@Icons.Material.Filled.MoveUp" IconColor="Color.Secondary"
+                                     OnClick="@(() => AbrirDialogSetor(context))">
+                            Mover de Setor
+                        </MudMenuItem>
+
+                        <MudMenuItem Icon="@Icons.Material.Filled.Flag" IconColor="Color.Info"
+                                     OnClick="@(() => AbrirDialogStatus(context))">
+                            Alterar Status
+                        </MudMenuItem>
+
+                        <MudMenuItem Icon="@Icons.Material.Filled.ThumbUp" IconColor="Color.Success"
+                                     OnClick="@(() => Navigation.NavigateTo($"/prospectos/efetivar/{context.Id}"))">
+                            Efetivar Venda
+                        </MudMenuItem>
+
+                        <MudMenuItem Icon="@Icons.Material.Filled.ThumbDown" IconColor="Color.Warning"
+                                     OnClick="@(() => AbrirDialogDesistencia(context))">
+                            Registrar Desistência
+                        </MudMenuItem>
+
+                        <MudDivider />
+                        <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
+                                     OnClick="@(() => ExcluirProspecto(context))">
+                            Excluir Prospecto
+                        </MudMenuItem>
+                    </MudMenu>
+                </MudButtonGroup>
+            }
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Align="Align.Center" Class="py-6 text-muted">Nenhum prospecto encontrado com os filtros aplicados.</MudText>
+    </NoRecordsContent>
+    <LoadingContent>
+        <MudText Align="Align.Center" Class="py-6">Carregando oportunidades...</MudText>
+    </LoadingContent>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="Registros por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<ClienteProsp> _table = default!;
+    private string _filtroTexto = "";
+    private int _filtroSetor = 100; // Padrão: Todos
+    private int _filtroStatus = 100; // Padrão: Todos
+    private bool _loading = false;
+
+    private List<Setor> _setores = new();
+    private List<ClienteProspStatus> _statusList = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            _setores = await ctx.Setor.OrderBy(s => s.Id).ToListAsync();
+            _statusList = await ctx.ClienteProspStatus.OrderBy(s => s.Id).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar filtros: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task<TableData<ClienteProsp>> LoadServerData(TableState state, CancellationToken cancellationToken)
+    {
+        _loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            IQueryable<ClienteProsp> query = ctx.ClienteProsp
+                .AsNoTracking()
+                .Include(c => c.Setor)
+                .Include(c => c.Status)
+                .Include(c => c.Municipio)
+                .Include(c => c.Revenda)
+                .Include(c => c.UF);
+
+            if (_filtroSetor != 100)
+            {
+                query = query.Where(c => c.SetorId == _filtroSetor);
+            }
+
+            if (_filtroStatus != 100)
+            {
+                query = query.Where(c => c.StatusId == _filtroStatus);
+            }
+
+            var filtro = (_filtroTexto ?? "").Trim().ToUpper();
+            if (!string.IsNullOrWhiteSpace(filtro))
+            {
+                query = query.Where(c => (c.Razao != null && c.Razao.ToUpper().Contains(filtro)) ||
+                                         (c.Fantasia != null && c.Fantasia.ToUpper().Contains(filtro)) ||
+                                         (c.CPF_CNPJ != null && c.CPF_CNPJ.Contains(filtro)) ||
+                                         (c.Contato != null && c.Contato.ToUpper().Contains(filtro)));
+            }
+
+            var totalItems = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderBy(c => c.SetorId)
+                .ThenBy(c => c.Razao)
+                .Skip(state.Page * state.PageSize)
+                .Take(state.PageSize)
+                .ToListAsync(cancellationToken);
+
+            return new TableData<ClienteProsp> { TotalItems = totalItems, Items = items };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar prospectos: {ex.Message}", Severity.Error);
+            return new TableData<ClienteProsp> { TotalItems = 0, Items = new List<ClienteProsp>() };
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void OnSetorChanged(int setor)
+    {
+        _filtroSetor = setor;
+        _table.ReloadServerData();
+    }
+
+    private void OnStatusChanged(int status)
+    {
+        _filtroStatus = status;
+        _table.ReloadServerData();
+    }
+
+    private void ResetFiltros()
+    {
+        _filtroTexto = "";
+        _filtroSetor = 100;
+        _filtroStatus = 100;
+        _table.ReloadServerData();
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            _table.ReloadServerData();
+        }
+    }
+
+    private void ClearSearch()
+    {
+        _filtroTexto = "";
+        _table.ReloadServerData();
+    }
+
+    private async Task AbrirDialogSetor(ClienteProsp prospecto)
+    {
+        var parameters = new DialogParameters<DialogAlteraSetor> { { x => x.Prospecto, prospecto } };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DialogAlteraSetor>("Mover Setor", parameters, options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+    private async Task AbrirDialogStatus(ClienteProsp prospecto)
+    {
+        var parameters = new DialogParameters<DialogAlteraStatus> { { x => x.Prospecto, prospecto } };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.ExtraSmall, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DialogAlteraStatus>("Alterar Status", parameters, options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+    private async Task AbrirDialogDesistencia(ClienteProsp prospecto)
+    {
+        var parameters = new DialogParameters<DialogDesistencia> { { x => x.Prospecto, prospecto } };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DialogDesistencia>("Registrar Desistência", parameters, options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await _table.ReloadServerData();
+        }
+    }
+
+    private async Task ExcluirProspecto(ClienteProsp prospecto)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Excluir Prospecto",
+            $"Tem certeza de que deseja excluir permanentemente o prospecto '{prospecto.Fantasia}' (#ID: {prospecto.Id})?",
+            yesText: "Excluir", cancelText: "Cancelar");
+
+        if (confirm != true) return;
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var item = await ctx.ClienteProsp.FindAsync(prospecto.Id);
+            if (item != null)
+            {
+                // Remove históricos relacionados antes
+                var hists = await ctx.ClienteProspHistorico.Where(h => h.ClienteProspId == item.Id).ToListAsync();
+                ctx.ClienteProspHistorico.RemoveRange(hists);
+
+                ctx.ClienteProsp.Remove(item);
+                await ctx.SaveChangesAsync();
+
+                Snackbar.Add($"Prospecto '{prospecto.Fantasia}' excluído com sucesso.", Severity.Success);
+                await _table.ReloadServerData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao excluir prospecto: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string FormatarCpfCnpj(string doc)
+    {
+        if (string.IsNullOrWhiteSpace(doc)) return "";
+        var numeros = Regex.Replace(doc, "[^0-9]", "");
+        if (numeros.Length == 11)
+            return Convert.ToUInt64(numeros).ToString(@"000\.000\.000\-00");
+        if (numeros.Length == 14)
+            return Convert.ToUInt64(numeros).ToString(@"00\.000\.000\/0000\-00");
+        return doc;
+    }
+
+    private Color GetSetorColor(int setorId)
+    {
+        return setorId switch
+        {
+            1 => Color.Primary,   // Vendas
+            2 => Color.Warning,   // Financeiro
+            3 => Color.Secondary, // Administrativo
+            4 => Color.Info,      // Suporte
+            99 => Color.Success,  // Vendas Efetivadas
+            101 => Color.Dark,    // Desistencias
+            _ => Color.Default
+        };
+    }
+
+    private Color GetStatusColor(int statusId)
+    {
+        return statusId switch
+        {
+            1 => Color.Warning,  // Aguardando Contato
+            2 => Color.Info,     // Em Negociação
+            3 => Color.Primary,  // Aguardando Retorno Vendas
+            4 => Color.Secondary,// Aguardo Financeiro
+            5 => Color.Success,  // Cliente
+            6 => Color.Error,    // Não Rolou
+            _ => Color.Default
+        };
+    }
+}

@@ -1,0 +1,94 @@
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+@inject AuthService Auth
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.ThumbDownAlt" Color="Color.Error" />
+            <MudText Typo="Typo.h6">Registrar Desistência de Prospecção</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-2">
+            Prospecto: <strong>@Prospecto.Razao</strong> (Fantasia: @Prospecto.Fantasia)
+        </MudText>
+
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Outlined" Class="mb-3">
+            O prospecto será movido para o setor de <strong>Desistências</strong> com status <strong>Não Rolou</strong>.
+        </MudAlert>
+
+        <MudTextField @bind-Value="_motivoDesistencia" Label="Motivo da Desistência *"
+                      Variant="Variant.Outlined" Lines="4"
+                      Placeholder="Descreva o motivo pelo qual o prospecto não fechou negócio (preço, concorrência, prazo, etc.)..." />
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Error" Variant="Variant.Filled" OnClick="Salvar" Disabled="@_salvando">
+            @(_salvando ? "Registrando..." : "Confirmar Desistência")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public ClienteProsp Prospecto { get; set; } = default!;
+
+    private string _motivoDesistencia = "";
+    private bool _salvando = false;
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Salvar()
+    {
+        if (string.IsNullOrWhiteSpace(_motivoDesistencia))
+        {
+            Snackbar.Add("Por favor, descreva o motivo da desistência.", Severity.Warning);
+            return;
+        }
+
+        _salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var prosp = await ctx.ClienteProsp.FindAsync(Prospecto.Id);
+            if (prosp != null)
+            {
+                prosp.SetorId = 101; // Desistencias
+                prosp.StatusId = 6;  // Nao Rolou
+                prosp.Flag = 2;      // Desistência
+                prosp.DataAlteracao = DateTime.UtcNow;
+
+                ctx.ClienteProsp.Update(prosp);
+
+                var usuarioNome = Auth.CurrentUser?.LoginName ?? "Sistema";
+                var usuarioId = Auth.CurrentUser?.Id ?? 1;
+
+                var histMsg = $"Desistência registrada por {usuarioNome}. Motivo: {_motivoDesistencia}";
+                var historico = new ClienteProspHistorico
+                {
+                    Data = DateTime.Now,
+                    UsuarioId = usuarioId,
+                    ClienteProspId = prosp.Id,
+                    Historico = histMsg
+                };
+                ctx.ClienteProspHistorico.Add(historico);
+
+                await ctx.SaveChangesAsync();
+                Snackbar.Add($"Desistência registrada com sucesso para '{prosp.Fantasia}'.", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao registrar desistência: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+}

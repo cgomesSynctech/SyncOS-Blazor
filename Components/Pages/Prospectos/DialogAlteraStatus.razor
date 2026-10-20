@@ -1,0 +1,120 @@
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+@inject AuthService Auth
+
+<MudDialog>
+    <TitleContent>
+        <div class="d-flex align-center gap-2">
+            <MudIcon Icon="@Icons.Material.Filled.Flag" Color="Color.Info" />
+            <MudText Typo="Typo.h6">Alterar Status do Prospecto</MudText>
+        </div>
+    </TitleContent>
+    <DialogContent>
+        <MudText Typo="Typo.body2" Class="mb-3">
+            Prospecto: <strong>@Prospecto.Razao</strong> (Fantasia: @Prospecto.Fantasia)
+        </MudText>
+
+        @if (_carregando)
+        {
+            <MudProgressCircular Indeterminate="true" Color="Color.Primary" />
+        }
+        else
+        {
+            <MudSelect T="int" @bind-Value="_novoStatusId" Label="Novo Status" Variant="Variant.Outlined" Dense="true" AnchorOrigin="Origin.BottomCenter">
+                @foreach (var s in _statusList)
+                {
+                    if (s.Id != 100)
+                    {
+                        <MudSelectItem Value="@s.Id">@s.Descricao</MudSelectItem>
+                    }
+                }
+            </MudSelect>
+        }
+    </DialogContent>
+    <DialogActions>
+        <MudButton OnClick="Cancelar">Cancelar</MudButton>
+        <MudButton Color="Color.Info" Variant="Variant.Filled" OnClick="Salvar" Disabled="@_salvando">
+            @(_salvando ? "Salvando..." : "Confirmar Alteração")
+        </MudButton>
+    </DialogActions>
+</MudDialog>
+
+@code {
+    [CascadingParameter]
+    private IMudDialogInstance MudDialog { get; set; } = default!;
+
+    [Parameter]
+    public ClienteProsp Prospecto { get; set; } = default!;
+
+    private int _novoStatusId;
+    private List<ClienteProspStatus> _statusList = new();
+    private bool _carregando = true;
+    private bool _salvando = false;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _carregando = true;
+        try
+        {
+            _novoStatusId = Prospecto.StatusId;
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            _statusList = await ctx.ClienteProspStatus.OrderBy(s => s.Id).ToListAsync();
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private void Cancelar() => MudDialog.Cancel();
+
+    private async Task Salvar()
+    {
+        if (_novoStatusId == Prospecto.StatusId)
+        {
+            MudDialog.Close(DialogResult.Ok(false));
+            return;
+        }
+
+        _salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var prosp = await ctx.ClienteProsp.FindAsync(Prospecto.Id);
+            if (prosp != null)
+            {
+                var statusAntigo = await ctx.ClienteProspStatus.FindAsync(prosp.StatusId);
+                var statusNovo = await ctx.ClienteProspStatus.FindAsync(_novoStatusId);
+
+                prosp.StatusId = _novoStatusId;
+                prosp.DataAlteracao = DateTime.UtcNow;
+                ctx.ClienteProsp.Update(prosp);
+
+                var usuarioNome = Auth.CurrentUser?.LoginName ?? "Sistema";
+                var usuarioId = Auth.CurrentUser?.Id ?? 1;
+
+                var histMsg = $"{usuarioNome}, Alterou o Status do Prospecto de {statusAntigo?.Descricao ?? "N/D"}, para {statusNovo?.Descricao ?? "N/D"}";
+                var historico = new ClienteProspHistorico
+                {
+                    Data = DateTime.Now,
+                    UsuarioId = usuarioId,
+                    ClienteProspId = prosp.Id,
+                    Historico = histMsg
+                };
+                ctx.ClienteProspHistorico.Add(historico);
+
+                await ctx.SaveChangesAsync();
+                Snackbar.Add($"Status alterado para '{statusNovo?.Descricao}' com sucesso!", Severity.Success);
+                MudDialog.Close(DialogResult.Ok(true));
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao alterar status: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+}

@@ -1,0 +1,188 @@
+@page "/municipios/novo"
+@page "/municipios/editar/{Id:int}"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>@(IsEdit ? "Editar Município" : "Novo Município") - SyncOS</PageTitle>
+
+<div class="mb-4">
+    <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0 mb-2" />
+    <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+        @(IsEdit ? $"Editar Município: {municipio.Descricao} - {municipio.UFId}" : "Cadastrar Novo Município")
+    </MudText>
+</div>
+
+@if (loading)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <MudCard Elevation="3" Class="rounded-lg" Style="max-width: 650px;">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                    <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.EditLocation : Icons.Material.Filled.AddLocationAlt)" Class="mr-2" Color="Color.Primary" />
+                    Dados do Município
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <EditForm Model="@municipio" OnValidSubmit="SalvarMunicipio">
+                <DataAnnotationsValidator />
+
+                <MudGrid Spacing="3">
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField @bind-Value="municipio.Id"
+                                         Label="Código IBGE (7 dígitos) *"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         Disabled="@IsEdit"
+                                         Required="true"
+                                         RequiredError="Código IBGE é obrigatório" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudSelect T="string" @bind-Value="municipio.UFId" Label="Estado (UF) *" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                            @foreach (var u in ufs)
+                            {
+                                <MudSelectItem Value="@u.Id">@($"{u.Id} - {u.Descricao}")</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="municipio.Descricao"
+                                      Label="Nome do Município / Cidade *"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Required="true"
+                                      RequiredError="Nome do município é obrigatório" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6">
+                        <MudNumericField @bind-Value="municipio.Ordem"
+                                         Label="Ordem de Exibição"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense" />
+                    </MudItem>
+                </MudGrid>
+
+                <div class="d-flex justify-end gap-3 mt-6">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/municipios">
+                        Cancelar
+                    </MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="@salvando">
+                        @if (salvando)
+                        {
+                            <MudProgressCircular Class="ms-n1 me-2" Size="Size.Small" Indeterminate="true" />
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <span>@(IsEdit ? "Salvar Alterações" : "Cadastrar Município")</span>
+                        }
+                    </MudButton>
+                </div>
+            </EditForm>
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private bool IsEdit => Id.HasValue && Id.Value > 0;
+
+    private bool loading = true;
+    private bool salvando = false;
+
+    private Municipio municipio = new() { Ordem = 9990, UFId = "PB" };
+    private List<UF> ufs = new();
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Início", href: "/"),
+            new BreadcrumbItem("Municípios", href: "/municipios"),
+            new BreadcrumbItem(IsEdit ? "Editar" : "Novo", href: null, disabled: true)
+        };
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            ufs = await ctx.UFs.AsNoTracking().OrderBy(u => u.Id).ToListAsync();
+
+            if (IsEdit)
+            {
+                var dbM = await ctx.Municipios.FindAsync(Id.Value);
+                if (dbM == null)
+                {
+                    Snackbar.Add("Município não encontrado.", Severity.Error);
+                    Navigation.NavigateTo("/municipios");
+                    return;
+                }
+                municipio = dbM;
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar dados: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SalvarMunicipio()
+    {
+        salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            if (IsEdit)
+            {
+                var dbM = await ctx.Municipios.FindAsync(municipio.Id);
+                if (dbM != null)
+                {
+                    dbM.UFId = municipio.UFId;
+                    dbM.Descricao = municipio.Descricao;
+                    dbM.Ordem = municipio.Ordem;
+
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add("Município atualizado com sucesso!", Severity.Success);
+                }
+            }
+            else
+            {
+                bool existe = await ctx.Municipios.AnyAsync(m => m.Id == municipio.Id);
+                if (existe)
+                {
+                    Snackbar.Add($"Já existe um município com o código IBGE {municipio.Id}.", Severity.Warning);
+                    salvando = false;
+                    return;
+                }
+
+                ctx.Municipios.Add(municipio);
+                await ctx.SaveChangesAsync();
+                Snackbar.Add($"Município '{municipio.Descricao} - {municipio.UFId}' cadastrado com sucesso!", Severity.Success);
+            }
+
+            Navigation.NavigateTo("/municipios");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao salvar município: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+}

@@ -1,0 +1,188 @@
+@page "/prospectos/historico/{Id:int}"
+
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject IDialogService DialogService
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject AuthService Auth
+
+<PageTitle>Histórico do Prospecto #@Id - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Histórico do Prospecto</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Registro cronológico de interações, alterações de setor/status e notas comerciais</MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/prospectos">
+            Voltar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddComment" OnClick="AdicionarHistorico">
+            Nova Interação
+        </MudButton>
+    </div>
+</div>
+
+@if (_carregando)
+{
+    <div class="d-flex justify-center align-center pa-12">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+    </div>
+}
+else if (_prospecto == null)
+{
+    <MudAlert Severity="Severity.Error">Prospecto não encontrado.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3">
+        <MudItem xs="12">
+            <MudCard Elevation="1">
+                <MudCardContent>
+                    <div class="d-flex justify-space-between align-center flex-wrap gap-2">
+                        <div>
+                            <MudText Typo="Typo.h6" Style="font-weight: 700;">@_prospecto.Razao</MudText>
+                            <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                Fantasia: @_prospecto.Fantasia | CPF/CNPJ: @_prospecto.CPF_CNPJ | Contato: @_prospecto.Contato (@_prospecto.WhatsApp)
+                            </MudText>
+                        </div>
+                        <div class="d-flex gap-2">
+                            <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Filled">
+                                Setor: @(_prospecto.Setor?.Descricao ?? "N/D")
+                            </MudChip>
+                            <MudChip T="string" Color="Color.Info" Size="Size.Small" Variant="Variant.Filled">
+                                Status: @(_prospecto.Status?.Descricao ?? "N/D")
+                            </MudChip>
+                        </div>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12">
+            <MudCard Elevation="1">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Linha do Tempo de Interações (@_historicos.Count)</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    @if (!_historicos.Any())
+                    {
+                        <div class="pa-8 text-center text-muted">
+                            <MudIcon Icon="@Icons.Material.Filled.History" Size="Size.Large" Color="Color.Default" Class="mb-2" />
+                            <MudText Typo="Typo.body1">Nenhuma interação registrada para este prospecto ainda.</MudText>
+                            <MudButton Variant="Variant.Filled" Color="Color.Primary" Size="Size.Small" Class="mt-3" OnClick="AdicionarHistorico">
+                                Registrar Primeira Interação
+                            </MudButton>
+                        </div>
+                    }
+                    else
+                    {
+                        <MudTimeline TimelinePosition="TimelinePosition.Start">
+                            @foreach (var hist in _historicos)
+                            {
+                                <MudTimelineItem Color="@GetTimelineColor(hist.Historico)" Size="Size.Medium" Elevation="1">
+                                    <ItemOpposite>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">
+                                            @hist.Data.ToString("dd/MM/yyyy")
+                                        </MudText>
+                                    </ItemOpposite>
+                                    <ItemContent>
+                                        <MudPaper Elevation="0" Class="pa-3 mb-2" Style="background-color: var(--mud-palette-background-grey); border-radius: 6px;">
+                                            <div class="d-flex justify-space-between align-center mb-1">
+                                                <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">
+                                                    @(hist.Usuario?.LoginName ?? "Sistema")
+                                                </MudText>
+                                                @if (!string.IsNullOrEmpty(hist.Arquivo))
+                                                {
+                                                    <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Primary" Icon="@Icons.Material.Filled.AttachFile">
+                                                        @hist.Arquivo
+                                                    </MudChip>
+                                                }
+                                            </div>
+                                            <MudText Typo="Typo.body2" Style="white-space: pre-wrap;">
+                                                @hist.Historico
+                                            </MudText>
+                                        </MudPaper>
+                                    </ItemContent>
+                                </MudTimelineItem>
+                            }
+                        </MudTimeline>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private ClienteProsp _prospecto;
+    private List<ClienteProspHistorico> _historicos = new();
+    private bool _carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        await CarregarDados();
+    }
+
+    private async Task CarregarDados()
+    {
+        _carregando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            _prospecto = await ctx.ClienteProsp
+                .AsNoTracking()
+                .Include(c => c.Setor)
+                .Include(c => c.Status)
+                .FirstOrDefaultAsync(c => c.Id == Id);
+
+            if (_prospecto != null)
+            {
+                _historicos = await ctx.ClienteProspHistorico
+                    .AsNoTracking()
+                    .Include(h => h.Usuario)
+                    .Where(h => h.ClienteProspId == Id)
+                    .OrderByDescending(h => h.Id)
+                    .ToListAsync();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar histórico: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task AdicionarHistorico()
+    {
+        if (_prospecto == null) return;
+
+        var parameters = new DialogParameters<DialogNovoHistorico> { { x => x.Prospecto, _prospecto } };
+        var options = new DialogOptions { CloseButton = true, MaxWidth = MaxWidth.Small, FullWidth = true };
+        var dialog = await DialogService.ShowAsync<DialogNovoHistorico>("Registrar Interação", parameters, options);
+        var result = await dialog.Result;
+        if (result != null && !result.Canceled)
+        {
+            await CarregarDados();
+        }
+    }
+
+    private Color GetTimelineColor(string texto)
+    {
+        if (string.IsNullOrEmpty(texto)) return Color.Default;
+        var t = texto.ToLower();
+        if (t.Contains("promoveu") || t.Contains("cliente")) return Color.Success;
+        if (t.Contains("desistência") || t.Contains("desistencia")) return Color.Error;
+        if (t.Contains("setor")) return Color.Primary;
+        if (t.Contains("status")) return Color.Info;
+        return Color.Secondary;
+    }
+}

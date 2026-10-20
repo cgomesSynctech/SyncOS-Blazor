@@ -1,0 +1,546 @@
+@page "/chamados/novo"
+@page "/chamados/novo/{ClienteIdParam:int}"
+@page "/chamados/editar/{Id:int}"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject AuthService Auth
+
+<PageTitle>@(IsEdicao ? $"Atendimento Chamado #{_chamado.Id}" : "Novo Chamado") - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">
+            @(IsEdicao ? $"Atendimento do Chamado #{_chamado.Id}" : "Abertura de Chamado")
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @(IsEdicao ? $"Protocolo: {_chamado.ProtocoloAutorizacao} | Abertura: {_chamado.DataAbertura:dd/MM/yyyy}" : "Preencha os dados do cliente e a solicitação de suporte")
+        </MudText>
+    </div>
+    <div>
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/chamados">
+            Voltar para Lista
+        </MudButton>
+    </div>
+</div>
+
+@if (_carregando)
+{
+    <div class="d-flex justify-center align-center pa-12">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+    </div>
+}
+else
+{
+    @if (_clienteBloqueadoAviso)
+    {
+        <MudAlert Severity="Severity.Warning" Variant="Variant.Filled" Class="mb-4">
+            <strong>Atenção:</strong> O cliente selecionado encontra-se <strong>Bloqueado</strong> ou <strong>Desativado</strong>.
+            Favor orientar a entrar em contato com o setor financeiro.
+        </MudAlert>
+    }
+
+    <EditForm Model="@_chamado" OnValidSubmit="SalvarChamado">
+        <DataAnnotationsValidator />
+
+        <MudGrid Spacing="3">
+            @if (!IsEdicao)
+            {
+                @* CARD DE ABERTURA DE NOVO CHAMADO *@
+                <MudItem xs="12" md="8">
+                    <MudCard Elevation="1">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Dados da Solicitação</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12">
+                                    <MudAutocomplete T="Cliente"
+                                                     Label="Cliente *"
+                                                     Value="_clienteSelecionado"
+                                                     ValueChanged="@OnClienteChanged"
+                                                     SearchFunc="@BuscarClientes"
+                                                     ToStringFunc="@(c => c == null ? "" : $"{c.Razao} - {c.Fantasia} (CNPJ: {c.CPF_CNPJ})")"
+                                                     ResetValueOnEmptyText="true"
+                                                     CoerceText="true"
+                                                     Dense="true"
+                                                     Variant="Variant.Outlined"
+                                                     Placeholder="Digite o nome, razão ou CNPJ do cliente..."
+                                                     AdornmentIcon="@Icons.Material.Filled.Search" />
+                                </MudItem>
+
+                                @if (_clienteSelecionado != null)
+                                {
+                                    <MudItem xs="12">
+                                        <MudPaper Elevation="0" Class="pa-3 mb-2" Style="background-color: var(--mud-palette-background-grey); border-radius: 4px;">
+                                            <div class="d-flex justify-space-between flex-wrap gap-2">
+                                                <div>
+                                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">@_clienteSelecionado.Razao</MudText>
+                                                    <MudText Typo="Typo.caption">Fantasia: @_clienteSelecionado.Fantasia | CNPJ: @_clienteSelecionado.CPF_CNPJ</MudText>
+                                                </div>
+                                                <div class="d-flex gap-2">
+                                                    @if (_clienteSelecionado.Bloqueado)
+                                                    {
+                                                        <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Filled">Bloqueado</MudChip>
+                                                    }
+                                                    @if (_clienteSelecionado.Desativado)
+                                                    {
+                                                        <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Filled">Desativado</MudChip>
+                                                    }
+                                                    @if (!string.IsNullOrEmpty(_clienteSelecionado.WhatsApp))
+                                                    {
+                                                        <MudChip T="string" Color="Color.Success" Size="Size.Small" Variant="Variant.Outlined" Icon="@Icons.Custom.Brands.WhatsApp">
+                                                            @_clienteSelecionado.WhatsApp
+                                                        </MudChip>
+                                                    }
+                                                </div>
+                                            </div>
+                                        </MudPaper>
+                                    </MudItem>
+                                }
+
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect T="int" @bind-Value="_chamado.ChamadoModuloId" Label="Módulo *" Variant="Variant.Outlined" Dense="true">
+                                        @foreach (var mod in _modulos)
+                                        {
+                                            <MudSelectItem Value="@mod.Id">@mod.Descricao</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect T="int" @bind-Value="_chamado.ChamadoMotivoId" Label="Motivo *" Variant="Variant.Outlined" Dense="true">
+                                        @foreach (var mot in _motivos)
+                                        {
+                                            <MudSelectItem Value="@mot.Id">@mot.Descricao</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect T="int" @bind-Value="_chamado.ChamadoFormaId" Label="Forma de Atendimento *" Variant="Variant.Outlined" Dense="true">
+                                        @foreach (var frm in _formas)
+                                        {
+                                            <MudSelectItem Value="@frm.Id">@frm.Descricao</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect T="int" @bind-Value="_chamado.ChamadoPrioridadeId" Label="Prioridade *" Variant="Variant.Outlined" Dense="true">
+                                        @foreach (var pri in _prioridades)
+                                        {
+                                            <MudSelectItem Value="@pri.Id">@pri.Descricao</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_chamado.Interlocutor" Label="Solicitante / Interlocutor *"
+                                                  Variant="Variant.Outlined" For="@(() => _chamado.Interlocutor)"
+                                                  Placeholder="Nome de quem solicitou o atendimento na empresa..." />
+                                </MudItem>
+
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_chamado.AlegacaoCliente" Label="Alegação do Cliente (Descrição do Problema) *"
+                                                  Variant="Variant.Outlined" Lines="5" For="@(() => _chamado.AlegacaoCliente)"
+                                                  Placeholder="Descreva detalhadamente a solicitação ou problema reportado..." />
+                                </MudItem>
+                            </MudGrid>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+
+                <MudItem xs="12" md="4">
+                    <MudCard Elevation="1" Class="mb-3">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Informações do Registro</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudTextField Value="@_chamado.ProtocoloAutorizacao" Label="Protocolo Gerado" Variant="Variant.Outlined" ReadOnly="true" Margin="Margin.Dense" />
+                            <div class="mt-3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Data de Abertura:</MudText>
+                                <MudText Typo="Typo.body2">@DateTime.Now.ToString("dd/MM/yyyy HH:mm")</MudText>
+                            </div>
+                            <div class="mt-2">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Registrado por:</MudText>
+                                <MudText Typo="Typo.body2">@(Auth.CurrentUser?.LoginName ?? "Sistema")</MudText>
+                            </div>
+                        </MudCardContent>
+                        <MudCardActions Class="pa-4">
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Success" FullWidth="true"
+                                       StartIcon="@Icons.Material.Filled.Save" Disabled="@_salvando">
+                                @(_salvando ? "Salvando..." : "Abrir Chamado")
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+            else
+            {
+                @* CARD DE ATENDIMENTO / EDIÇÃO *@
+                <MudItem xs="12" md="5">
+                    <MudCard Elevation="1" Class="mb-3">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Dados da Abertura</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <div class="mb-3">
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">Cliente</MudText>
+                                <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">
+                                    @(_chamado.Cliente?.Razao ?? $"Cliente #{_chamado.ClienteId}")
+                                </MudText>
+                                <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                    Fantasia: @(_chamado.Cliente?.Fantasia) | CNPJ: @(_chamado.Cliente?.CPF_CNPJ)
+                                </MudText>
+                            </div>
+
+                            <MudDivider Class="my-2" />
+
+                            <MudGrid Spacing="1">
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Protocolo</MudText>
+                                    <MudText Typo="Typo.body2" Style="font-family: monospace; font-weight: 600;">@_chamado.ProtocoloAutorizacao</MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Data Abertura</MudText>
+                                    <MudText Typo="Typo.body2">@_chamado.DataAbertura.ToString("dd/MM/yyyy")</MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Módulo</MudText>
+                                    <MudText Typo="Typo.body2">@(_chamado.Modulo?.Descricao ?? "-")</MudText>
+                                </MudItem>
+                                <MudItem xs="6">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Prioridade</MudText>
+                                    <MudText Typo="Typo.body2">@(_chamado.Prioridade?.Descricao ?? "-")</MudText>
+                                </MudItem>
+                                <MudItem xs="12">
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Solicitante</MudText>
+                                    <MudText Typo="Typo.body2">@_chamado.Interlocutor</MudText>
+                                </MudItem>
+                            </MudGrid>
+
+                            <MudDivider Class="my-2" />
+
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">Alegação do Cliente</MudText>
+                            <MudPaper Elevation="0" Class="pa-3 mt-1" Style="background-color: var(--mud-palette-background-grey); border-left: 3px solid var(--mud-palette-primary); border-radius: 4px;">
+                                <MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@_chamado.AlegacaoCliente</MudText>
+                            </MudPaper>
+                        </MudCardContent>
+                    </MudCard>
+                </MudItem>
+
+                <MudItem xs="12" md="7">
+                    <MudCard Elevation="1">
+                        <MudCardHeader>
+                            <CardHeaderContent>
+                                <MudText Typo="Typo.h6">Atendimento Técnico</MudText>
+                            </CardHeaderContent>
+                        </MudCardHeader>
+                        <MudCardContent>
+                            <MudGrid Spacing="2">
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect T="int" @bind-Value="_chamado.ChamadoStatusId" Label="Status do Chamado *" Variant="Variant.Outlined" Dense="true">
+                                        @foreach (var st in _statusList)
+                                        {
+                                            if (st.Id != 100)
+                                            {
+                                                <MudSelectItem Value="@st.Id">@st.Descricao</MudSelectItem>
+                                            }
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+
+                                <MudItem xs="12" sm="6">
+                                    <MudSelect T="int" @bind-Value="_chamado.TecnicoId" Label="Técnico Responsável *" Variant="Variant.Outlined" Dense="true">
+                                        @foreach (var tec in _tecnicos)
+                                        {
+                                            <MudSelectItem Value="@tec.Id">@tec.LoginName</MudSelectItem>
+                                        }
+                                    </MudSelect>
+                                </MudItem>
+
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_chamado.AlegacaoTecnico" Label="Diagnóstico / Apuração do Técnico"
+                                                  Variant="Variant.Outlined" Lines="4"
+                                                  Placeholder="Descreva o que foi analisado tecnicamente ou motivo do problema..." />
+                                </MudItem>
+
+                                <MudItem xs="12">
+                                    <MudTextField @bind-Value="_chamado.Resolucao" Label="Resolução do Chamado"
+                                                  Variant="Variant.Outlined" Lines="4"
+                                                  Placeholder="Descreva os procedimentos efetuados para resolução do chamado..." />
+                                </MudItem>
+
+                                <MudItem xs="12" sm="6">
+                                    <MudCheckBox @bind-Value="_chamado.IsSolucionado" Color="Color.Success">
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">Chamado Solucionado?</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Marcará o chamado como Finalizado automaticamente</MudText>
+                                    </MudCheckBox>
+                                </MudItem>
+
+                                <MudItem xs="12" sm="6">
+                                    <MudCheckBox @bind-Value="_chamado.IsImprocedente" Color="Color.Warning">
+                                        <MudText Typo="Typo.body2" Style="font-weight: 600;">Improcedente?</MudText>
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">Indica solicitação indevida ou fora de escopo</MudText>
+                                    </MudCheckBox>
+                                </MudItem>
+                            </MudGrid>
+                        </MudCardContent>
+                        <MudCardActions Class="pa-4 d-flex justify-end gap-2">
+                            <MudButton Variant="Variant.Outlined" Color="Color.Default" Href="/chamados">
+                                Cancelar
+                            </MudButton>
+                            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                                       StartIcon="@Icons.Material.Filled.Save" Disabled="@_salvando">
+                                @(_salvando ? "Salvando..." : "Salvar Atendimento")
+                            </MudButton>
+                        </MudCardActions>
+                    </MudCard>
+                </MudItem>
+            }
+        </MudGrid>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    [Parameter]
+    public int? ClienteIdParam { get; set; }
+
+    private bool IsEdicao => Id.HasValue && Id.Value > 0;
+    private bool _carregando = true;
+    private bool _salvando = false;
+    private bool _clienteBloqueadoAviso = false;
+
+    private Chamado _chamado = new();
+    private Cliente _clienteSelecionado;
+
+    private List<ChamadoModulo> _modulos = new();
+    private List<ChamadoMotivo> _motivos = new();
+    private List<ChamadoForma> _formas = new();
+    private List<ChamadoPrioridade> _prioridades = new();
+    private List<ChamadoStatus> _statusList = new();
+    private List<Usuario> _tecnicos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _carregando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            _modulos = await ctx.ChamadoModulo.OrderBy(m => m.Descricao).ToListAsync();
+            _motivos = await ctx.ChamadoMotivo.OrderBy(m => m.Descricao).ToListAsync();
+            _formas = await ctx.ChamadoForma.OrderBy(f => f.Descricao).ToListAsync();
+            _prioridades = await ctx.ChamadoPrioridade.OrderBy(p => p.Id).ToListAsync();
+            _statusList = await ctx.ChamadoStatus.OrderBy(s => s.Id).ToListAsync();
+            _tecnicos = await ctx.Usuarios.Where(u => u.Ativo).OrderBy(u => u.LoginName).ToListAsync();
+
+            var currentUserId = Auth.CurrentUser?.Id ?? 1;
+
+            if (IsEdicao)
+            {
+                var item = await ctx.Chamados
+                    .Include(c => c.Cliente)
+                    .Include(c => c.Modulo)
+                    .Include(c => c.Motivo)
+                    .Include(c => c.Forma)
+                    .Include(c => c.Prioridade)
+                    .Include(c => c.Status)
+                    .Include(c => c.Tecnico)
+                    .FirstOrDefaultAsync(c => c.Id == Id.Value);
+
+                if (item == null)
+                {
+                    Snackbar.Add("Chamado não encontrado.", Severity.Error);
+                    Navigation.NavigateTo("/chamados");
+                    return;
+                }
+
+                _chamado = item;
+                if (_chamado.TecnicoId == 0)
+                {
+                    _chamado.TecnicoId = currentUserId;
+                }
+            }
+            else
+            {
+                _chamado = new Chamado
+                {
+                    DataAbertura = DateTime.Now,
+                    DataAtendimento = DateTime.MinValue,
+                    DataFinalizacao = DateTime.MinValue,
+                    ChamadoStatusId = 1, // Aguardando Atendimento
+                    ChamadoPrioridadeId = 1, // Normal
+                    UsuarioId = currentUserId,
+                    TecnicoId = currentUserId,
+                    ProtocoloAutorizacao = DateTime.UtcNow.ToString("yyyyMMddHHmmss")
+                };
+
+                if (_modulos.Any()) _chamado.ChamadoModuloId = _modulos.First().Id;
+                if (_motivos.Any()) _chamado.ChamadoMotivoId = _motivos.First().Id;
+                if (_formas.Any()) _chamado.ChamadoFormaId = _formas.First().Id;
+
+                // Se passou ClienteIdParam pela URL (ex: a partir da lista de clientes)
+                if (ClienteIdParam.HasValue && ClienteIdParam.Value > 0)
+                {
+                    var cli = await ctx.Clientes.FirstOrDefaultAsync(c => c.Id == ClienteIdParam.Value);
+                    if (cli != null)
+                    {
+                        OnClienteChanged(cli);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar dados do formulário: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task<IEnumerable<Cliente>> BuscarClientes(string value, CancellationToken token)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            return Array.Empty<Cliente>();
+        }
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var termo = value.Trim().ToUpper();
+
+            return await ctx.Clientes
+                .AsNoTracking()
+                .Where(c => (c.Razao != null && c.Razao.ToUpper().Contains(termo)) ||
+                            (c.Fantasia != null && c.Fantasia.ToUpper().Contains(termo)) ||
+                            (c.CPF_CNPJ != null && c.CPF_CNPJ.Contains(termo)) ||
+                            c.Id.ToString() == termo)
+                .OrderBy(c => c.Razao)
+                .Take(20)
+                .ToListAsync(token);
+        }
+        catch
+        {
+            return Array.Empty<Cliente>();
+        }
+    }
+
+    private void OnClienteChanged(Cliente cliente)
+    {
+        _clienteSelecionado = cliente;
+        if (cliente != null)
+        {
+            _chamado.ClienteId = cliente.Id;
+            _clienteBloqueadoAviso = cliente.Bloqueado || cliente.Desativado;
+        }
+        else
+        {
+            _chamado.ClienteId = 0;
+            _clienteBloqueadoAviso = false;
+        }
+    }
+
+    private async Task SalvarChamado()
+    {
+        if (!IsEdicao && _chamado.ClienteId <= 0)
+        {
+            Snackbar.Add("Por favor, selecione um cliente válido.", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_chamado.Interlocutor))
+        {
+            Snackbar.Add("Por favor, informe o solicitante / interlocutor.", Severity.Warning);
+            return;
+        }
+
+        if (string.IsNullOrWhiteSpace(_chamado.AlegacaoCliente))
+        {
+            Snackbar.Add("Por favor, descreva a alegação do cliente.", Severity.Warning);
+            return;
+        }
+
+        _salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            if (!IsEdicao)
+            {
+                // Verifica bloqueio e perfil se usuário não for admin
+                var perfilId = Auth.CurrentUser?.PerfilId ?? 0;
+                if (_clienteBloqueadoAviso && perfilId > 2)
+                {
+                    Snackbar.Add("Não é permitido abrir chamado para clientes Bloqueados ou Desativados.", Severity.Error);
+                    _salvando = false;
+                    return;
+                }
+
+                _chamado.DataAbertura = DateTime.Now;
+                _chamado.DataAtendimento = DateTime.MinValue;
+                _chamado.DataFinalizacao = DateTime.MinValue;
+                _chamado.ChamadoStatusId = 1;
+                _chamado.UsuarioId = Auth.CurrentUser?.Id ?? 1;
+                _chamado.TecnicoId = Auth.CurrentUser?.Id ?? 1;
+
+                ctx.Chamados.Add(_chamado);
+                await ctx.SaveChangesAsync();
+
+                Snackbar.Add($"Chamado aberto com sucesso! Protocolo: {_chamado.ProtocoloAutorizacao}", Severity.Success);
+            }
+            else
+            {
+                var item = await ctx.Chamados.FindAsync(_chamado.Id);
+                if (item == null)
+                {
+                    Snackbar.Add("Chamado não encontrado no banco de dados.", Severity.Error);
+                    return;
+                }
+
+                item.AlegacaoTecnico = _chamado.AlegacaoTecnico;
+                item.Resolucao = _chamado.Resolucao;
+                item.ChamadoStatusId = _chamado.ChamadoStatusId;
+                item.TecnicoId = _chamado.TecnicoId > 0 ? _chamado.TecnicoId : (Auth.CurrentUser?.Id ?? item.TecnicoId);
+                item.IsImprocedente = _chamado.IsImprocedente;
+                item.IsSolucionado = _chamado.IsSolucionado;
+                item.DataAtendimento = DateTime.Now;
+
+                // Se marcado como solucionado, finaliza automaticamente
+                if (_chamado.IsSolucionado)
+                {
+                    item.ChamadoStatusId = 0; // Finalizado
+                    item.DataFinalizacao = DateTime.Now;
+                }
+
+                ctx.Chamados.Update(item);
+                await ctx.SaveChangesAsync();
+
+                Snackbar.Add($"Atendimento do chamado #{item.Id} salvo com sucesso!", Severity.Success);
+            }
+
+            Navigation.NavigateTo("/chamados");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao salvar chamado: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+}

@@ -1,0 +1,335 @@
+@page "/prospectos/novo"
+@page "/prospectos/editar/{Id:int}"
+@using System.Text.RegularExpressions
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+@inject NavigationManager Navigation
+@inject AuthService Auth
+
+<PageTitle>@(IsEdicao ? $"Editar Prospecto #{_prospecto.Id}" : "Novo Prospecto") - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">
+            @(IsEdicao ? $"Editar Prospecto #{_prospecto.Id}" : "Novo Prospecto Comercial")
+        </MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">
+            @(IsEdicao ? $"Atualize as informações comerciais de '{_prospecto.Fantasia}'" : "Cadastre uma nova oportunidade de venda no funil comercial")
+        </MudText>
+    </div>
+    <div>
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/prospectos">
+            Voltar
+        </MudButton>
+    </div>
+</div>
+
+@if (_carregando)
+{
+    <div class="d-flex justify-center align-center pa-12">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <EditForm Model="@_prospecto" OnValidSubmit="SalvarProspecto">
+        <DataAnnotationsValidator />
+
+        <MudTabs Elevation="1" Rounded="true" ApplyEffectsToContainer="true" TabPanelsClass="pa-4">
+            @* TAB 1: DADOS GERAIS *@
+            <MudTabPanel Text="1. Dados Gerais & Contato" Icon="@Icons.Material.Filled.Business">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_prospecto.Razao" Label="Razão Social *" Variant="Variant.Outlined" For="@(() => _prospecto.Razao)" />
+                    </MudItem>
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="_prospecto.Fantasia" Label="Nome Fantasia *" Variant="Variant.Outlined" For="@(() => _prospecto.Fantasia)" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField @bind-Value="_prospecto.CPF_CNPJ" Label="CPF / CNPJ *" Variant="Variant.Outlined" For="@(() => _prospecto.CPF_CNPJ)" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField @bind-Value="_prospecto.InscricaoEstadual" Label="Inscrição Estadual" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudSelect T="int" @bind-Value="_prospecto.RevendaId" Label="Revenda *" Variant="Variant.Outlined" Dense="true">
+                            @foreach (var rev in _revendas)
+                            {
+                                <MudSelectItem Value="@rev.Id">@rev.Descricao</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField @bind-Value="_prospecto.Contato" Label="Pessoa de Contato *" Variant="Variant.Outlined" For="@(() => _prospecto.Contato)" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField @bind-Value="_prospecto.WhatsApp" Label="WhatsApp" Variant="Variant.Outlined"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Custom.Brands.WhatsApp" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField @bind-Value="_prospecto.Email" Label="E-mail *" Variant="Variant.Outlined" For="@(() => _prospecto.Email)"
+                                      Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Email" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField @bind-Value="_prospecto.Vendedor" Label="Vendedor / Representante" Variant="Variant.Outlined" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudSelect T="int" @bind-Value="_prospecto.SetorId" Label="Setor / Etapa do Funil *" Variant="Variant.Outlined" Dense="true">
+                            @foreach (var set in _setores)
+                            {
+                                if (set.Id != 100)
+                                {
+                                    <MudSelectItem Value="@set.Id">@set.Descricao</MudSelectItem>
+                                }
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudSelect T="int" @bind-Value="_prospecto.StatusId" Label="Status do Prospecto *" Variant="Variant.Outlined" Dense="true">
+                            @foreach (var st in _statusList)
+                            {
+                                if (st.Id != 100)
+                                {
+                                    <MudSelectItem Value="@st.Id">@st.Descricao</MudSelectItem>
+                                }
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+
+            @* TAB 2: ENDEREÇO *@
+            <MudTabPanel Text="2. Endereço" Icon="@Icons.Material.Filled.LocationOn">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="4" md="3">
+                        <MudTextField @bind-Value="_prospecto.CEP" Label="CEP *" Variant="Variant.Outlined" For="@(() => _prospecto.CEP)" />
+                    </MudItem>
+                    <MudItem xs="12" sm="8" md="7">
+                        <MudTextField @bind-Value="_prospecto.Endereco" Label="Endereço / Logradouro *" Variant="Variant.Outlined" For="@(() => _prospecto.Endereco)" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4" md="2">
+                        <MudTextField @bind-Value="_prospecto.Numero" Label="Número *" Variant="Variant.Outlined" For="@(() => _prospecto.Numero)" />
+                    </MudItem>
+                    <MudItem xs="12" sm="8" md="4">
+                        <MudTextField @bind-Value="_prospecto.Bairro" Label="Bairro *" Variant="Variant.Outlined" For="@(() => _prospecto.Bairro)" />
+                    </MudItem>
+                    <MudItem xs="12" sm="4" md="3">
+                        <MudSelect T="string" Value="_prospecto.UFId" ValueChanged="@OnUFChanged" Label="UF *" Variant="Variant.Outlined" Dense="true">
+                            @foreach (var uf in _ufs)
+                            {
+                                <MudSelectItem Value="@uf.Id">@uf.Descricao (@uf.Id)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                    <MudItem xs="12" sm="8" md="5">
+                        <MudSelect T="int" @bind-Value="_prospecto.MunicipioId" Label="Município *" Variant="Variant.Outlined" Dense="true">
+                            @foreach (var mun in _municipios)
+                            {
+                                <MudSelectItem Value="@mun.Id">@mun.Descricao</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+                </MudGrid>
+            </MudTabPanel>
+
+            @* TAB 3: PROPOSTA & MÓDULOS *@
+            <MudTabPanel Text="3. Módulos & Proposta" Icon="@Icons.Material.Filled.ReceiptLong">
+                <MudGrid Spacing="2">
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField @bind-Value="_prospecto.ValorNegociacao" Label="Valor Implantação / Venda (R$)"
+                                         Variant="Variant.Outlined" Format="N2" Culture="@System.Globalization.CultureInfo.GetCultureInfo("pt-BR")" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudNumericField @bind-Value="_prospecto.ValorManutencaoNegociacao" Label="Valor Mensalidade (R$)"
+                                         Variant="Variant.Outlined" Format="N2" Culture="@System.Globalization.CultureInfo.GetCultureInfo("pt-BR")" />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudTextField @bind-Value="_prospecto.FormaPgto" Label="Forma de Pagamento" Variant="Variant.Outlined" Placeholder="Boleto, Pix, Cartão..." />
+                    </MudItem>
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudTextField @bind-Value="_prospecto.PlanoPgto" Label="Plano de Pagamento" Variant="Variant.Outlined" Placeholder="Mensal, Anual, À vista..." />
+                    </MudItem>
+
+                    <MudItem xs="12">
+                        <MudDivider Class="my-2" />
+                        <MudText Typo="Typo.subtitle2" Style="font-weight: 600;">Módulos de Interesse / Negociados:</MudText>
+                    </MudItem>
+
+                    <MudItem xs="6" sm="4" md="3"><MudCheckBox @bind-Value="_prospecto.Retaguarda" Color="Color.Primary" Label="Retaguarda" /></MudItem>
+                    <MudItem xs="6" sm="4" md="3"><MudCheckBox @bind-Value="_prospecto.Nf" Color="Color.Primary" Label="NF-e" /></MudItem>
+                    <MudItem xs="6" sm="4" md="3"><MudCheckBox @bind-Value="_prospecto.Nfc" Color="Color.Primary" Label="NFC-e" /></MudItem>
+                    <MudItem xs="6" sm="4" md="3"><MudCheckBox @bind-Value="_prospecto.MDF" Color="Color.Primary" Label="MDF-e" /></MudItem>
+                    <MudItem xs="6" sm="4" md="3"><MudCheckBox @bind-Value="_prospecto.VipShop" Color="Color.Primary" Label="MixPub / VipShop" /></MudItem>
+                    <MudItem xs="6" sm="4" md="3"><MudCheckBox @bind-Value="_prospecto.Sped" Color="Color.Primary" Label="SPED Fiscal" /></MudItem>
+                    <MudItem xs="6" sm="4" md="3"><MudCheckBox @bind-Value="_prospecto.Backup" Color="Color.Primary" Label="Sync Backup" /></MudItem>
+                    <MudItem xs="6" sm="4" md="3"><MudCheckBox @bind-Value="_prospecto.TEF" Color="Color.Primary" Label="TEF" /></MudItem>
+                    <MudItem xs="6" sm="4" md="3"><MudCheckBox @bind-Value="_prospecto.Certificado" Color="Color.Primary" Label="Certificado Digital" /></MudItem>
+                    <MudItem xs="6" sm="4" md="3"><MudCheckBox @bind-Value="_prospecto.Outros" Color="Color.Primary" Label="Outros Módulos" /></MudItem>
+
+                    @if (_prospecto.Outros)
+                    {
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="_prospecto.EspecieOutros" Label="Especificação dos Outros Módulos" Variant="Variant.Outlined" />
+                        </MudItem>
+                    }
+                </MudGrid>
+            </MudTabPanel>
+        </MudTabs>
+
+        <div class="d-flex justify-end gap-3 mt-4">
+            <MudButton Variant="Variant.Outlined" Color="Color.Default" Href="/prospectos">
+                Cancelar
+            </MudButton>
+            <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary"
+                       StartIcon="@Icons.Material.Filled.Save" Disabled="@_salvando">
+                @(_salvando ? "Salvando..." : "Salvar Prospecto")
+            </MudButton>
+        </div>
+    </EditForm>
+}
+
+@code {
+    [Parameter]
+    public int? Id { get; set; }
+
+    private bool IsEdicao => Id.HasValue && Id.Value > 0;
+    private ClienteProsp _prospecto = new();
+    private bool _carregando = true;
+    private bool _salvando = false;
+
+    private List<UF> _ufs = new();
+    private List<Municipio> _municipios = new();
+    private List<Revenda> _revendas = new();
+    private List<Setor> _setores = new();
+    private List<ClienteProspStatus> _statusList = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _carregando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            _ufs = await ctx.UFs.OrderBy(u => u.Descricao).ToListAsync();
+            _revendas = await ctx.Revendas.OrderBy(r => r.Descricao).ToListAsync();
+            _setores = await ctx.Setor.OrderBy(s => s.Id).ToListAsync();
+            _statusList = await ctx.ClienteProspStatus.OrderBy(s => s.Id).ToListAsync();
+
+            if (IsEdicao)
+            {
+                var item = await ctx.ClienteProsp.FirstOrDefaultAsync(c => c.Id == Id.Value);
+                if (item == null)
+                {
+                    Snackbar.Add("Prospecto não encontrado.", Severity.Error);
+                    Navigation.NavigateTo("/prospectos");
+                    return;
+                }
+                _prospecto = item;
+            }
+            else
+            {
+                _prospecto = new ClienteProsp
+                {
+                    DataInclusao = DateTime.Now,
+                    DataAlteracao = DateTime.UtcNow,
+                    SetorId = 1, // Vendas
+                    StatusId = 1, // Aguardando Contato
+                    UFId = "PB",
+                    RevendaId = _revendas.FirstOrDefault()?.Id ?? 1,
+                    ValorNegociacao = 0.0,
+                    ValorManutencaoNegociacao = 0.0
+                };
+            }
+
+            await CarregarMunicipios(_prospecto.UFId);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar formulário: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private async Task OnUFChanged(string novaUf)
+    {
+        _prospecto.UFId = novaUf;
+        await CarregarMunicipios(novaUf);
+        if (_municipios.Any())
+        {
+            _prospecto.MunicipioId = _municipios.First().Id;
+        }
+    }
+
+    private async Task CarregarMunicipios(string uf)
+    {
+        if (string.IsNullOrEmpty(uf)) return;
+        using var ctx = await DbFactory.CreateDbContextAsync();
+        _municipios = await ctx.Municipios
+            .Where(m => m.UFId == uf)
+            .OrderBy(m => m.Descricao)
+            .ToListAsync();
+    }
+
+    private async Task SalvarProspecto()
+    {
+        _salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            if (!string.IsNullOrEmpty(_prospecto.CPF_CNPJ))
+                _prospecto.CPF_CNPJ = Regex.Replace(_prospecto.CPF_CNPJ, "[^0-9]", "");
+            if (!string.IsNullOrEmpty(_prospecto.InscricaoEstadual))
+                _prospecto.InscricaoEstadual = Regex.Replace(_prospecto.InscricaoEstadual, "[^0-9]", "");
+            if (!string.IsNullOrEmpty(_prospecto.CEP))
+                _prospecto.CEP = Regex.Replace(_prospecto.CEP, "[^0-9]", "");
+
+            _prospecto.ValorNegociacao ??= 0.0;
+            _prospecto.ValorManutencaoNegociacao ??= 0.0;
+            _prospecto.DataAlteracao = DateTime.UtcNow;
+
+            if (!IsEdicao)
+            {
+                _prospecto.DataInclusao = DateTime.Now;
+                ctx.ClienteProsp.Add(_prospecto);
+                await ctx.SaveChangesAsync();
+
+                // Registra histórico inicial
+                var usuarioNome = Auth.CurrentUser?.LoginName ?? "Sistema";
+                var hist = new ClienteProspHistorico
+                {
+                    Data = DateTime.Now,
+                    UsuarioId = Auth.CurrentUser?.Id ?? 1,
+                    ClienteProspId = _prospecto.Id,
+                    Historico = $"Prospecto cadastrado por {usuarioNome} no setor de Vendas."
+                };
+                ctx.ClienteProspHistorico.Add(hist);
+                await ctx.SaveChangesAsync();
+
+                Snackbar.Add($"Prospecto '{_prospecto.Fantasia}' cadastrado com sucesso!", Severity.Success);
+            }
+            else
+            {
+                ctx.ClienteProsp.Update(_prospecto);
+                await ctx.SaveChangesAsync();
+
+                Snackbar.Add($"Prospecto '{_prospecto.Fantasia}' atualizado com sucesso!", Severity.Success);
+            }
+
+            Navigation.NavigateTo("/prospectos");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao salvar prospecto: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _salvando = false;
+        }
+    }
+}

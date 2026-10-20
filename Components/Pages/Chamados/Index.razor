@@ -1,0 +1,359 @@
+@page "/chamados"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+@inject NavigationManager Navigation
+@inject AuthService Auth
+
+<PageTitle>Chamados - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Central de Chamados</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Gestão, atendimento técnico e suporte aos clientes</MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.AddComment" Href="/chamados/novo">
+            Novo Chamado
+        </MudButton>
+    </div>
+</div>
+
+<MudCard Elevation="1" Class="mb-4 pa-3">
+    <MudGrid Spacing="2" Class="align-center">
+        <MudItem xs="12" md="4">
+            <MudTextField @bind-Value="_filtroTexto" Placeholder="Pesquisar por Protocolo, Cliente, Solicitante..."
+                          Adornment="Adornment.Start" AdornmentIcon="@Icons.Material.Filled.Search"
+                          Immediate="true" OnKeyUp="@OnSearchKeyUp" Clearable="true" OnClearButtonClick="@ClearSearch" />
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="3">
+            <MudSelect T="int" Value="_filtroModulo" ValueChanged="@OnModuloChanged" Label="Módulo" Dense="true" Margin="Margin.Dense">
+                <MudSelectItem Value="100">Todos os Módulos</MudSelectItem>
+                @foreach (var mod in _modulos)
+                {
+                    <MudSelectItem Value="@mod.Id">@mod.Descricao</MudSelectItem>
+                }
+            </MudSelect>
+        </MudItem>
+
+        <MudItem xs="12" sm="6" md="5" Class="d-flex justify-end gap-1 flex-wrap">
+            <MudButton Variant="@(_filtroStatus == 1 ? Variant.Filled : Variant.Outlined)" Color="Color.Warning" Size="Size.Small" OnClick="@(() => FiltrarStatus(1))">
+                Aguardando
+            </MudButton>
+            <MudButton Variant="@(_filtroStatus == 6 ? Variant.Filled : Variant.Outlined)" Color="Color.Info" Size="Size.Small" OnClick="@(() => FiltrarStatus(6))">
+                Em Atendimento
+            </MudButton>
+            <MudButton Variant="@(_filtroStatus == 0 ? Variant.Filled : Variant.Outlined)" Color="Color.Success" Size="Size.Small" OnClick="@(() => FiltrarStatus(0))">
+                Finalizados
+            </MudButton>
+            <MudButton Variant="@(_filtroStatus == 100 ? Variant.Filled : Variant.Outlined)" Color="Color.Default" Size="Size.Small" OnClick="@(() => FiltrarStatus(100))">
+                Todos
+            </MudButton>
+        </MudItem>
+    </MudGrid>
+</MudCard>
+
+<MudTable ServerData="LoadServerData" @ref="_table" Dense="true" Hover="true" Striped="true" Elevation="1" Loading="@_loading">
+    <HeaderContent>
+        <MudTh Style="width: 80px; text-align:center;"># ID</MudTh>
+        <MudTh>Data Abertura</MudTh>
+        <MudTh>Protocolo</MudTh>
+        <MudTh>Cliente</MudTh>
+        <MudTh>Módulo</MudTh>
+        <MudTh>Status</MudTh>
+        <MudTh Style="text-align:center;">Prioridade</MudTh>
+        <MudTh>Técnico</MudTh>
+        <MudTh Style="text-align:right; width: 130px;">Ações</MudTh>
+    </HeaderContent>
+    <RowTemplate>
+        <MudTd DataLabel="ID" Style="text-align:center; font-weight: 600;">@context.Id</MudTd>
+        <MudTd DataLabel="Data Abertura">
+            <MudText Typo="Typo.body2">@context.DataAbertura.ToString("dd/MM/yyyy")</MudText>
+        </MudTd>
+        <MudTd DataLabel="Protocolo">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="Color.Default" Style="font-family: monospace; font-size: 11px;">
+                @context.ProtocoloAutorizacao
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Cliente">
+            <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 220px; font-weight: 500;">
+                @(context.Cliente?.Fantasia ?? context.Cliente?.Razao ?? $"Cliente #{context.ClienteId}")
+            </MudText>
+            @if (!string.IsNullOrEmpty(context.Interlocutor))
+            {
+                <MudText Typo="Typo.caption" Color="Color.Secondary" Class="text-truncate" Style="max-width: 220px;">
+                    Sol.: @context.Interlocutor
+                </MudText>
+            }
+        </MudTd>
+        <MudTd DataLabel="Módulo">
+            @(context.Modulo?.Descricao ?? "-")
+        </MudTd>
+        <MudTd DataLabel="Status">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Filled" Color="@GetStatusColor(context.ChamadoStatusId)">
+                @(context.Status?.Descricao ?? $"Status {context.ChamadoStatusId}")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Prioridade" Style="text-align:center;">
+            <MudChip T="string" Size="Size.Small" Variant="Variant.Outlined" Color="@GetPrioridadeColor(context.ChamadoPrioridadeId)">
+                @(context.Prioridade?.Descricao ?? "Normal")
+            </MudChip>
+        </MudTd>
+        <MudTd DataLabel="Técnico">
+            <MudText Typo="Typo.body2" Class="text-truncate" Style="max-width: 140px;">
+                @(context.Tecnico?.LoginName ?? "-")
+            </MudText>
+        </MudTd>
+        <MudTd DataLabel="Ações" Style="text-align:right;">
+            <MudButtonGroup Color="Color.Default" Variant="Variant.Outlined" Size="Size.Small">
+                <MudTooltip Text="Atender / Editar">
+                    <MudIconButton Icon="@Icons.Material.Filled.EditNote" Color="Color.Primary" Size="Size.Small"
+                                   OnClick="@(() => Navigation.NavigateTo($"/chamados/editar/{context.Id}"))" />
+                </MudTooltip>
+                
+                @if (context.ChamadoStatusId != 0)
+                {
+                    <MudTooltip Text="Finalizar Chamado">
+                        <MudIconButton Icon="@Icons.Material.Filled.CheckCircleOutline" Color="Color.Success" Size="Size.Small"
+                                       OnClick="@(() => FinalizarChamado(context))" />
+                    </MudTooltip>
+                }
+
+                <MudMenu Icon="@Icons.Material.Filled.MoreVert" Size="Size.Small" Dense="true" AnchorOrigin="Origin.BottomRight" TransformOrigin="Origin.TopRight">
+                    <MudMenuItem Icon="@Icons.Material.Filled.Visibility" IconColor="Color.Info"
+                                 OnClick="@(() => Navigation.NavigateTo($"/chamados/detalhes/{context.Id}"))">
+                        Detalhes
+                    </MudMenuItem>
+
+                    <MudMenuItem Icon="@Icons.Material.Filled.Edit" IconColor="Color.Primary"
+                                 OnClick="@(() => Navigation.NavigateTo($"/chamados/editar/{context.Id}"))">
+                        Atendimento Técnico
+                    </MudMenuItem>
+
+                    @if (context.ChamadoStatusId != 0)
+                    {
+                        <MudMenuItem Icon="@Icons.Material.Filled.TaskAlt" IconColor="Color.Success"
+                                     OnClick="@(() => FinalizarChamado(context))">
+                            Finalizar Chamado
+                        </MudMenuItem>
+                    }
+
+                    <MudDivider />
+                    <MudMenuItem Icon="@Icons.Material.Filled.Delete" IconColor="Color.Error"
+                                 OnClick="@(() => ExcluirChamado(context))">
+                        Excluir Chamado
+                    </MudMenuItem>
+                </MudMenu>
+            </MudButtonGroup>
+        </MudTd>
+    </RowTemplate>
+    <NoRecordsContent>
+        <MudText Align="Align.Center" Class="py-6 text-muted">Nenhum chamado encontrado com os filtros aplicados.</MudText>
+    </NoRecordsContent>
+    <LoadingContent>
+        <MudText Align="Align.Center" Class="py-6">Carregando chamados...</MudText>
+    </LoadingContent>
+    <PagerContent>
+        <MudTablePager RowsPerPageString="Chamados por página:" InfoFormat="{first_item}-{last_item} de {all_items}" />
+    </PagerContent>
+</MudTable>
+
+@code {
+    private MudTable<Chamado> _table = default!;
+    private string _filtroTexto = "";
+    private int _filtroStatus = 1; // Padrão: Aguardando Atendimento (1)
+    private int _filtroModulo = 100; // Padrão: Todos (100)
+    private bool _loading = false;
+    private List<ChamadoModulo> _modulos = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            _modulos = await ctx.ChamadoModulo.OrderBy(m => m.Descricao).ToListAsync();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar módulos: {ex.Message}", Severity.Warning);
+        }
+    }
+
+    private async Task<TableData<Chamado>> LoadServerData(TableState state, CancellationToken cancellationToken)
+    {
+        _loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            IQueryable<Chamado> query = ctx.Chamados
+                .AsNoTracking()
+                .Include(c => c.Cliente)
+                .Include(c => c.Modulo)
+                .Include(c => c.Status)
+                .Include(c => c.Prioridade)
+                .Include(c => c.Tecnico)
+                .Include(c => c.Usuario);
+
+            // Filtro por Módulo
+            if (_filtroModulo != 100)
+            {
+                query = query.Where(w => w.ChamadoModuloId == _filtroModulo);
+            }
+
+            // Filtro por Status
+            if (_filtroStatus != 100)
+            {
+                query = query.Where(w => w.ChamadoStatusId == _filtroStatus);
+            }
+
+            // Filtro por Texto (Protocolo, Fantasia/Razão do Cliente, Interlocutor, ID)
+            var filtro = (_filtroTexto ?? "").Trim();
+            if (!string.IsNullOrWhiteSpace(filtro))
+            {
+                if (int.TryParse(filtro, out int idBusca))
+                {
+                    query = query.Where(w => w.Id == idBusca ||
+                                             (w.ProtocoloAutorizacao != null && w.ProtocoloAutorizacao.Contains(filtro)));
+                }
+                else
+                {
+                    query = query.Where(w => (w.ProtocoloAutorizacao != null && w.ProtocoloAutorizacao.Contains(filtro)) ||
+                                             (w.Cliente != null && (w.Cliente.Fantasia.Contains(filtro) || w.Cliente.Razao.Contains(filtro))) ||
+                                             (w.Interlocutor != null && w.Interlocutor.Contains(filtro)));
+                }
+            }
+
+            var totalItems = await query.CountAsync(cancellationToken);
+
+            var items = await query
+                .OrderByDescending(o => o.ChamadoPrioridadeId)
+                .ThenByDescending(o => o.Id)
+                .Skip(state.Page * state.PageSize)
+                .Take(state.PageSize)
+                .ToListAsync(cancellationToken);
+
+            return new TableData<Chamado> { TotalItems = totalItems, Items = items };
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar chamados: {ex.Message}", Severity.Error);
+            return new TableData<Chamado> { TotalItems = 0, Items = new List<Chamado>() };
+        }
+        finally
+        {
+            _loading = false;
+        }
+    }
+
+    private void FiltrarStatus(int status)
+    {
+        _filtroStatus = status;
+        _table.ReloadServerData();
+    }
+
+    private void OnModuloChanged(int modulo)
+    {
+        _filtroModulo = modulo;
+        _table.ReloadServerData();
+    }
+
+    private void OnSearchKeyUp(KeyboardEventArgs e)
+    {
+        if (e.Key == "Enter")
+        {
+            _table.ReloadServerData();
+        }
+    }
+
+    private void ClearSearch()
+    {
+        _filtroTexto = "";
+        _table.ReloadServerData();
+    }
+
+    private async Task FinalizarChamado(Chamado chamado)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Finalizar Chamado",
+            $"Deseja marcar o chamado #{chamado.Id} (Protocolo: {chamado.ProtocoloAutorizacao}) como Finalizado?",
+            yesText: "Finalizar", cancelText: "Cancelar");
+
+        if (confirm != true) return;
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var item = await ctx.Chamados.FindAsync(chamado.Id);
+            if (item != null)
+            {
+                var usuarioId = Auth.CurrentUser?.Id ?? item.TecnicoId;
+                item.TecnicoId = usuarioId;
+                item.DataFinalizacao = DateTime.Now;
+                item.ChamadoStatusId = 0; // 0 = Finalizado
+                item.IsSolucionado = true;
+
+                ctx.Update(item);
+                await ctx.SaveChangesAsync();
+
+                Snackbar.Add($"Chamado #{item.Id} finalizado com sucesso!", Severity.Success);
+                await _table.ReloadServerData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao finalizar chamado: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private async Task ExcluirChamado(Chamado chamado)
+    {
+        var confirm = await DialogService.ShowMessageBoxAsync(
+            "Excluir Chamado",
+            $"Tem certeza de que deseja excluir permanentemente o chamado #{chamado.Id} (Protocolo: {chamado.ProtocoloAutorizacao})?",
+            yesText: "Excluir", cancelText: "Cancelar");
+
+        if (confirm != true) return;
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var item = await ctx.Chamados.FindAsync(chamado.Id);
+            if (item != null)
+            {
+                ctx.Chamados.Remove(item);
+                await ctx.SaveChangesAsync();
+                Snackbar.Add($"Chamado #{chamado.Id} excluído com sucesso.", Severity.Success);
+                await _table.ReloadServerData();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao excluir chamado: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private Color GetStatusColor(int statusId)
+    {
+        return statusId switch
+        {
+            0 => Color.Success, // Finalizado
+            1 => Color.Warning, // Aguardando Atendimento
+            2 => Color.Secondary, // Desenvolvimento
+            3 => Color.Tertiary, // Em Análise
+            6 => Color.Info, // Em Atendimento
+            7 => Color.Dark, // Aguardando Retorno
+            _ => Color.Default
+        };
+    }
+
+    private Color GetPrioridadeColor(int prioridadeId)
+    {
+        return prioridadeId switch
+        {
+            3 => Color.Error,   // Urgente
+            2 => Color.Warning, // Médio
+            _ => Color.Default  // Normal
+        };
+    }
+}

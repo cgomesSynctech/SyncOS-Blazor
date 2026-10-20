@@ -1,0 +1,536 @@
+@page "/atualizacoes/novo"
+@page "/atualizacoes/editar/{Id:int}"
+@using System.IO
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IConfiguration Configuration
+@inject IWebHostEnvironment Environment
+
+<PageTitle>@(IsEdit ? "Editar Atualização" : "Nova Atualização") - SyncOS</PageTitle>
+
+<div class="mb-4">
+    <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0 mb-2" />
+    <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+        @(IsEdit ? $"Editar Atualização v{atualizacao.Versao}" : "Cadastrar Nova Atualização")
+    </MudText>
+    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+        Faça o upload do pacote compactado (.zip) e configure a liberação para o aplicativo de atualização
+    </MudText>
+</div>
+
+@if (loading)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <MudCard Elevation="3" Class="rounded-lg" Style="max-width: 950px;">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                    <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.SystemUpdateAlt)" Class="mr-2" Color="Color.Primary" />
+                    @(IsEdit ? $"Editar Atualização #{atualizacao.Id}" : (atualizacao.Id > 0 ? $"Nova Atualização #{atualizacao.Id}" : "Nova Atualização"))
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <EditForm Model="@atualizacao" OnValidSubmit="SalvarAtualizacao">
+                <DataAnnotationsValidator />
+
+                <MudGrid Spacing="3">
+                    <!-- Número da Versão -->
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudTextField @bind-Value="atualizacao.Versao"
+                                      Label="Número da Versão *"
+                                      Placeholder="Ex: 2.14.0"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Required="true"
+                                      RequiredError="Versão é obrigatória" />
+                    </MudItem>
+
+                    <!-- Data da Versão -->
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudDatePicker @bind-Date="dataVersaoNullable"
+                                       Label="Data da Versão *"
+                                       DateFormat="dd/MM/yyyy"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Required="true" />
+                    </MudItem>
+
+                    <!-- Tipo de Aplicativo -->
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudSelect T="int" Value="@atualizacao.TipoAtualizacaoId" ValueChanged="OnTipoAtualizacaoChanged" Label="Tipo de Aplicativo *" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                            @foreach (var t in tiposApp)
+                            {
+                                <MudSelectItem Value="@t.Id">@t.Descricao (Id: @t.Id)</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- CNPJ Alvo -->
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudTextField @bind-Value="atualizacao.CNPJ"
+                                      Label="CNPJ Alvo (99999999999999 = Todos)"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    </MudItem>
+
+                    <!-- Seleção e Upload do Pacote .ZIP (Renomeado automaticamente para {Id}-{Tipo}.zip) -->
+                    <MudItem xs="12" md="6">
+                        <div class="d-flex flex-column gap-1">
+                            <label class="mud-input-label mud-input-label-animated" style="font-size: 0.875rem; color: #475569; font-weight: 600;">
+                                Arquivo do Pacote (.ZIP) *
+                            </label>
+                            <div class="d-flex align-center gap-2">
+                                <InputFile id="inputArquivoZip"
+                                           OnChange="OnArquivoZipSelecionado"
+                                           accept=".zip"
+                                           style="display: none;"
+                                           disabled="@_uploadingArquivo" />
+
+                                <label for="inputArquivoZip" style="@(_uploadingArquivo ? "pointer-events: none; opacity: 0.6;" : "cursor: pointer; margin: 0; display: inline-flex;")">
+                                    <MudButton Variant="Variant.Filled"
+                                               Color="Color.Primary"
+                                               StartIcon="@Icons.Material.Filled.CloudUpload"
+                                               Disabled="@_uploadingArquivo"
+                                               Style="pointer-events: none;">
+                                        @(_uploadingArquivo ? "Enviando..." : "Selecionar Arquivo .ZIP")
+                                    </MudButton>
+                                </label>
+
+                                <MudTextField Value="@atualizacao.Pacote"
+                                              ReadOnly="true"
+                                              Placeholder="@($"Ex: {atualizacao.Id}-{atualizacao.TipoAtualizacaoId}.zip")"
+                                              Variant="Variant.Outlined"
+                                              Margin="Margin.Dense"
+                                              Class="flex-grow-1"
+                                              Required="true"
+                                              RequiredError="Selecione um arquivo .zip para o pacote"
+                                              Adornment="@(!string.IsNullOrEmpty(atualizacao.Pacote) ? Adornment.End : Adornment.None)"
+                                              AdornmentIcon="@Icons.Material.Filled.CheckCircle"
+                                              AdornmentColor="Color.Success" />
+                            </div>
+
+                            @if (_uploadingArquivo)
+                            {
+                                <div class="d-flex align-center gap-2 mt-1">
+                                    <MudProgressCircular Size="Size.Small" Indeterminate="true" Color="Color.Primary" />
+                                    <MudText Typo="Typo.caption" Color="Color.Primary">
+                                        Gravando pacote na pasta como <b>@($"{atualizacao.Id}-{atualizacao.TipoAtualizacaoId}.zip")</b>... Por favor, aguarde.
+                                    </MudText>
+                                </div>
+                            }
+                            else if (!string.IsNullOrEmpty(atualizacao.Pacote))
+                            {
+                                <div class="d-flex align-center gap-2 mt-1">
+                                    <MudIcon Icon="@Icons.Material.Filled.Check" Color="Color.Success" Size="Size.Small" />
+                                    <MudText Typo="Typo.caption" Color="Color.Success" Style="font-weight: 600;">
+                                        Pacote renomeado para: <b>@atualizacao.Pacote</b> @(!string.IsNullOrEmpty(_tamanhoArquivoFormatado) ? $"({_tamanhoArquivoFormatado})" : "")
+                                    </MudText>
+                                    @if (!string.IsNullOrEmpty(_nomeArquivoOriginal) && _nomeArquivoOriginal != atualizacao.Pacote)
+                                    {
+                                        <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                            (Original: @_nomeArquivoOriginal)
+                                        </MudText>
+                                    }
+                                </div>
+                            }
+                            else
+                            {
+                                <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                    O arquivo será renomeado automaticamente para <b>@($"{atualizacao.Id}-{atualizacao.TipoAtualizacaoId}.zip")</b> e salvo na pasta setada (<b>@ObterPastaPacotes()</b>).
+                                </MudText>
+                            }
+                        </div>
+                    </MudItem>
+
+                    <!-- Caminho para Descompactar -->
+                    <MudItem xs="12" md="6">
+                        <MudTextField @bind-Value="atualizacao.PathDescompactar"
+                                      Label="Caminho para Descompactar no Cliente"
+                                      Placeholder="Ex: C:\SyncOS"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    </MudItem>
+
+                    <!-- Campo Ativo (Controle para o Aplicativo que vai Executar) -->
+                    <MudItem xs="12" sm="6">
+                        <MudCard Outlined="true" Class="pa-3 rounded-lg" Style="@(ativoBool ? "border-color: #22c55e;" : "border-color: #cbd5e1;")">
+                            <div class="d-flex justify-space-between align-center">
+                                <div>
+                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">
+                                        <MudIcon Icon="@Icons.Material.Filled.PlayCircle" Size="Size.Small" Class="mr-1" Color="@(ativoBool ? Color.Success : Color.Default)" />
+                                        Status para o Aplicativo Executor
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Indica se a atualização está <b>@(ativoBool ? "ATIVA" : "INATIVA")</b> para execução pelo aplicativo nos clientes
+                                    </MudText>
+                                </div>
+                                <MudSwitch @bind-Value="ativoBool" Color="Color.Success">
+                                    <MudChip T="string" Color="@(ativoBool ? Color.Success : Color.Default)" Size="Size.Small" Variant="Variant.Filled">
+                                        @(ativoBool ? "Ativa" : "Inativa")
+                                    </MudChip>
+                                </MudSwitch>
+                            </div>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- Exigir Backup -->
+                    <MudItem xs="12" sm="6">
+                        <MudCard Outlined="true" Class="pa-3 rounded-lg" Style="@(backupBool ? "border-color: #f59e0b;" : "border-color: #cbd5e1;")">
+                            <div class="d-flex justify-space-between align-center">
+                                <div>
+                                    <MudText Typo="Typo.subtitle2" Style="font-weight: 700;">
+                                        <MudIcon Icon="@Icons.Material.Filled.Backup" Size="Size.Small" Class="mr-1" Color="@(backupBool ? Color.Warning : Color.Default)" />
+                                        Exigência de Backup
+                                    </MudText>
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">
+                                        Exige que o cliente faça backup antes de aplicar o pacote
+                                    </MudText>
+                                </div>
+                                <MudSwitch @bind-Value="backupBool" Color="Color.Warning">
+                                    <MudChip T="string" Color="@(backupBool ? Color.Warning : Color.Default)" Size="Size.Small" Variant="Variant.Filled">
+                                        @(backupBool ? "Sim" : "Não")
+                                    </MudChip>
+                                </MudSwitch>
+                            </div>
+                        </MudCard>
+                    </MudItem>
+
+                    <!-- LeiaMe -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="atualizacao.LeiaMe"
+                                      Label="Leia-me / Notas de Lançamento (Changelog)"
+                                      Placeholder="Descreva as novidades, melhorias e correções desta versão..."
+                                      Variant="Variant.Outlined"
+                                      Lines="4" />
+                    </MudItem>
+
+                    <!-- Script SQL -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="atualizacao.Script"
+                                      Label="Script SQL / Comandos de Banco de Dados"
+                                      Placeholder="Instruções DDL/DML a serem executadas..."
+                                      Variant="Variant.Outlined"
+                                      Lines="4"
+                                      Style="font-family: monospace;" />
+                    </MudItem>
+                </MudGrid>
+
+                <div class="d-flex justify-end gap-3 mt-6">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/atualizacoes">
+                        Cancelar
+                    </MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="@(salvando || _uploadingArquivo)">
+                        @if (salvando)
+                        {
+                            <MudProgressCircular Class="ms-n1 me-2" Size="Size.Small" Indeterminate="true" />
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <span>@(IsEdit ? "Salvar Alterações" : "Cadastrar Atualização")</span>
+                        }
+                    </MudButton>
+                </div>
+            </EditForm>
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+    [Parameter] public int? Id { get; set; }
+    private bool IsEdit => Id.HasValue && Id.Value > 0;
+
+    private bool loading = true;
+    private bool salvando = false;
+    private bool _uploadingArquivo = false;
+    private string _tamanhoArquivoFormatado = "";
+    private string _nomeArquivoOriginal = "";
+
+    private Atualizacao atualizacao = new()
+    {
+        DataVersao = DateTime.Today,
+        CNPJ = "99999999999999",
+        Backup = "S",
+        Ativo = "S",
+        TipoAtualizacaoId = 0
+    };
+
+    private DateTime? dataVersaoNullable = DateTime.Today;
+    private bool backupBool = true;
+    private bool ativoBool = true;
+
+    private List<TipoAtualizacao> tiposApp = new();
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Início", href: "/"),
+            new BreadcrumbItem("Atualizações", href: "/atualizacoes"),
+            new BreadcrumbItem(IsEdit ? "Editar" : "Nova", href: null, disabled: true)
+        };
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            tiposApp = await ctx.TiposAPP.AsNoTracking().OrderBy(t => t.Descricao).ToListAsync();
+
+            if (IsEdit)
+            {
+                var dbAtu = await ctx.Atualizacoes.FindAsync(Id.Value);
+                if (dbAtu == null)
+                {
+                    Snackbar.Add("Atualização não encontrada.", Severity.Error);
+                    Navigation.NavigateTo("/atualizacoes");
+                    return;
+                }
+                atualizacao = dbAtu;
+                dataVersaoNullable = atualizacao.DataVersao;
+                backupBool = atualizacao.Backup == "S";
+                ativoBool = atualizacao.Ativo == "S";
+
+                if (!string.IsNullOrEmpty(atualizacao.Pacote))
+                {
+                    var caminhoPacote = Path.Combine(ObterPastaPacotes(), atualizacao.Pacote);
+                    if (File.Exists(caminhoPacote))
+                    {
+                        var info = new FileInfo(caminhoPacote);
+                        _tamanhoArquivoFormatado = FormatBytes(info.Length);
+                    }
+                }
+            }
+            else
+            {
+                // Obter próximo ID para a nova atualização
+                var proximoId = await NextID.GetNextId("Atualizacao", ctx);
+                if (proximoId <= 0)
+                {
+                    var maxId = await ctx.Atualizacoes.MaxAsync(a => (int?)a.Id) ?? 0;
+                    proximoId = maxId + 1;
+                }
+                atualizacao.Id = proximoId;
+
+                if (tiposApp.Any())
+                {
+                    atualizacao.TipoAtualizacaoId = tiposApp.First().Id;
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar dados: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private string ObterPastaPacotes()
+    {
+        var configurado = Configuration["Pastas:Pacotes"];
+        if (!string.IsNullOrWhiteSpace(configurado))
+        {
+            var path = Path.IsPathRooted(configurado) ? configurado : Path.Combine(Environment.ContentRootPath, configurado);
+            if (Directory.Exists(path))
+            {
+                return path;
+            }
+        }
+
+        var localPath = Path.Combine(Environment.ContentRootPath, "Pacotes");
+        if (!Directory.Exists(localPath))
+        {
+            Directory.CreateDirectory(localPath);
+        }
+        return localPath;
+    }
+
+    private async Task OnTipoAtualizacaoChanged(int novoTipoId)
+    {
+        var antigoTipoId = atualizacao.TipoAtualizacaoId;
+        atualizacao.TipoAtualizacaoId = novoTipoId;
+
+        // Se já existe um pacote definido e gravado, renomeia o arquivo físico para o novo formato {Id}-{novoTipoId}.zip
+        if (!string.IsNullOrEmpty(atualizacao.Pacote))
+        {
+            var pastaPacotes = ObterPastaPacotes();
+            var nomeNovo = $"{atualizacao.Id}-{novoTipoId}.zip";
+            var caminhoAntigo = Path.Combine(pastaPacotes, atualizacao.Pacote);
+            var caminhoNovo = Path.Combine(pastaPacotes, nomeNovo);
+
+            if (File.Exists(caminhoAntigo) && caminhoAntigo != caminhoNovo)
+            {
+                try
+                {
+                    if (File.Exists(caminhoNovo))
+                    {
+                        File.Delete(caminhoNovo);
+                    }
+                    File.Move(caminhoAntigo, caminhoNovo);
+                    atualizacao.Pacote = nomeNovo;
+                    Snackbar.Add($"Pacote renomeado automaticamente para: '{nomeNovo}'", Severity.Info);
+                }
+                catch (Exception ex)
+                {
+                    Snackbar.Add($"Aviso ao renomear arquivo do pacote: {ex.Message}", Severity.Warning);
+                }
+            }
+            else
+            {
+                atualizacao.Pacote = nomeNovo;
+            }
+        }
+    }
+
+    private async Task OnArquivoZipSelecionado(InputFileChangeEventArgs e)
+    {
+        var file = e.File;
+        if (file == null) return;
+
+        if (!file.Name.EndsWith(".zip", StringComparison.OrdinalIgnoreCase))
+        {
+            Snackbar.Add("Atenção: Selecione exclusivamente arquivos compactados no formato .ZIP!", Severity.Warning);
+            return;
+        }
+
+        _uploadingArquivo = true;
+        _nomeArquivoOriginal = file.Name;
+        StateHasChanged();
+
+        try
+        {
+            var pastaPacotes = ObterPastaPacotes();
+            if (!Directory.Exists(pastaPacotes))
+            {
+                Directory.CreateDirectory(pastaPacotes);
+            }
+
+            // Padrão exigido: {Id da atualização}-{TipoAtualizacaoId}.zip (Ex: 6572-0.zip)
+            var nomeDestino = $"{atualizacao.Id}-{atualizacao.TipoAtualizacaoId}.zip";
+            var destino = Path.Combine(pastaPacotes, nomeDestino);
+
+            if (File.Exists(destino))
+            {
+                try { File.Delete(destino); } catch { }
+            }
+
+            // Suporta arquivos de até 500 MB
+            using (var inStream = file.OpenReadStream(maxAllowedSize: 500 * 1024 * 1024))
+            using (var outStream = new FileStream(destino, FileMode.Create, FileAccess.Write))
+            {
+                await inStream.CopyToAsync(outStream);
+            }
+
+            atualizacao.Pacote = nomeDestino;
+            _tamanhoArquivoFormatado = FormatBytes(file.Size);
+            Snackbar.Add($"Pacote '{file.Name}' enviado com sucesso e renomeado para '{nomeDestino}' ({_tamanhoArquivoFormatado})!", Severity.Success);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao gravar o arquivo .zip: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _uploadingArquivo = false;
+            StateHasChanged();
+        }
+    }
+
+    private string FormatBytes(long bytes)
+    {
+        if (bytes <= 0) return "0 B";
+        string[] suffixes = { "B", "KB", "MB", "GB" };
+        int place = Convert.ToInt32(Math.Floor(Math.Log(bytes, 1024)));
+        double num = Math.Round(bytes / Math.Pow(1024, place), 1);
+        return $"{num} {suffixes[place]}";
+    }
+
+    private async Task SalvarAtualizacao()
+    {
+        if (string.IsNullOrWhiteSpace(atualizacao.Pacote))
+        {
+            Snackbar.Add("Atenção: É necessário selecionar e enviar o arquivo .ZIP do pacote para cadastrar a atualização.", Severity.Warning);
+            return;
+        }
+
+        salvando = true;
+        try
+        {
+            atualizacao.DataVersao = dataVersaoNullable ?? DateTime.Today;
+            atualizacao.Backup = backupBool ? "S" : "N";
+            atualizacao.Ativo = ativoBool ? "S" : "N";
+
+            // Garantir que o nome físico e o campo no banco correspondam exatamente a {Id}-{TipoAtualizacaoId}.zip
+            var nomeEsperado = $"{atualizacao.Id}-{atualizacao.TipoAtualizacaoId}.zip";
+            var pastaPacotes = ObterPastaPacotes();
+            var caminhoEsperado = Path.Combine(pastaPacotes, nomeEsperado);
+
+            if (!string.IsNullOrEmpty(atualizacao.Pacote) && atualizacao.Pacote != nomeEsperado)
+            {
+                var caminhoAtual = Path.Combine(pastaPacotes, atualizacao.Pacote);
+                if (File.Exists(caminhoAtual))
+                {
+                    try
+                    {
+                        if (File.Exists(caminhoEsperado))
+                        {
+                            File.Delete(caminhoEsperado);
+                        }
+                        File.Move(caminhoAtual, caminhoEsperado);
+                    }
+                    catch { }
+                }
+                atualizacao.Pacote = nomeEsperado;
+            }
+
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            if (IsEdit)
+            {
+                var dbAtu = await ctx.Atualizacoes.FindAsync(atualizacao.Id);
+                if (dbAtu != null)
+                {
+                    dbAtu.Versao = atualizacao.Versao;
+                    dbAtu.DataVersao = atualizacao.DataVersao;
+                    dbAtu.TipoAtualizacaoId = atualizacao.TipoAtualizacaoId;
+                    dbAtu.CNPJ = atualizacao.CNPJ;
+                    dbAtu.Pacote = atualizacao.Pacote;
+                    dbAtu.PathDescompactar = atualizacao.PathDescompactar;
+                    dbAtu.Backup = atualizacao.Backup;
+                    dbAtu.Ativo = atualizacao.Ativo;
+                    dbAtu.LeiaMe = atualizacao.LeiaMe;
+                    dbAtu.Script = atualizacao.Script;
+
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add("Atualização modificada com sucesso!", Severity.Success);
+                }
+            }
+            else
+            {
+                ctx.Atualizacoes.Add(atualizacao);
+                await ctx.SaveChangesAsync();
+
+                Snackbar.Add($"Atualização v{atualizacao.Versao} (#{atualizacao.Id}) cadastrada com sucesso! Pacote: {atualizacao.Pacote}", Severity.Success);
+            }
+
+            Navigation.NavigateTo("/atualizacoes");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao salvar atualização: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+}

@@ -1,0 +1,238 @@
+@page "/desenvolvimento/detalhes/{Id:int}"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Detalhes da Demanda - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0 mb-2" />
+        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+            <MudIcon Icon="@Icons.Material.Filled.Assignment" Class="mr-2" Color="Color.Primary" />
+            Demanda #@Id: @(card?.Rotulo ?? "")
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/desenvolvimento">
+            Voltar
+        </MudButton>
+        <MudButton Variant="Variant.Outlined" Color="Color.Info" StartIcon="@Icons.Material.Filled.History" Href="@($"/desenvolvimento/historico/{Id}")">
+            Ver Histórico
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Edit" Href="@($"/desenvolvimento/editar/{Id}")">
+            Editar
+        </MudButton>
+    </div>
+</div>
+
+@if (loading)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else if (card == null)
+{
+    <MudAlert Severity="Severity.Error">Card de desenvolvimento não encontrado.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3">
+        <!-- Coluna Principal -->
+        <MudItem xs="12" md="8">
+            <MudCard Elevation="2" Class="rounded-lg mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Style="font-weight: 600;">Descrição da Demanda</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudText Typo="Typo.subtitle1" Style="font-weight: 600;" Class="mb-2">@card.Descricao</MudText>
+
+                    @if (!string.IsNullOrWhiteSpace(card.Detalhes))
+                    {
+                        <MudDivider Class="my-3" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">DETALHES TÉCNICOS</MudText>
+                        <MudText Typo="Typo.body2" Class="mt-1" Style="white-space: pre-wrap;">@card.Detalhes</MudText>
+                    }
+
+                    @if (!string.IsNullOrWhiteSpace(card.Observacao))
+                    {
+                        <MudDivider Class="my-3" />
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">OBSERVAÇÕES ADICIONAIS</MudText>
+                        <MudText Typo="Typo.body2" Class="mt-1" Style="white-space: pre-wrap;">@card.Observacao</MudText>
+                    }
+                </MudCardContent>
+            </MudCard>
+
+            @if (!string.IsNullOrWhiteSpace(card.Solucao) || !string.IsNullOrWhiteSpace(card.Resolucao))
+            {
+                <MudCard Elevation="2" Class="rounded-lg border-start-success border-4 mb-4">
+                    <MudCardHeader>
+                        <CardHeaderContent>
+                            <MudText Typo="Typo.h6" Style="font-weight: 600;" Color="Color.Success">
+                                <MudIcon Icon="@Icons.Material.Filled.CheckCircle" Class="mr-2" />
+                                Resolução / Solução Aplicada
+                            </MudText>
+                        </CardHeaderContent>
+                    </MudCardHeader>
+                    <MudCardContent>
+                        @if (!string.IsNullOrWhiteSpace(card.Solucao))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">SOLUÇÃO</MudText>
+                            <MudText Typo="Typo.body2" Class="mb-3" Style="white-space: pre-wrap;">@card.Solucao</MudText>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(card.Resolucao))
+                        {
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">RESOLUÇÃO DETALHADA</MudText>
+                            <MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@card.Resolucao</MudText>
+                        }
+
+                        @if (!string.IsNullOrWhiteSpace(card.VersaoSuapp))
+                        {
+                            <div class="mt-3">
+                                <MudChip T="string" Color="Color.Success" Variant="Variant.Outlined" Icon="@Icons.Material.Filled.Tag">
+                                    Disponível na Versão: @card.VersaoSuapp
+                                </MudChip>
+                            </div>
+                        }
+                    </MudCardContent>
+                </MudCard>
+            }
+        </MudItem>
+
+        <!-- Coluna Lateral de Metadados -->
+        <MudItem xs="12" md="4">
+            <MudCard Elevation="2" Class="rounded-lg mb-4">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Metadados da Demanda</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <div class="mb-3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">STATUS ATUAL</MudText>
+                        <div class="d-flex align-center mt-1">
+                            <MudChip T="string" Color="@GetStatusColor(card.DesenvCardStatusId)" Variant="Variant.Filled">
+                                @(card.DesenvCardStatus?.Descricao ?? "Solicitado")
+                            </MudChip>
+                            <MudTooltip Text="Mudar Status">
+                                <MudIconButton Icon="@Icons.Material.Filled.SwapHoriz" Color="Color.Primary" Size="Size.Small" OnClick="AbrirAlteracaoStatus" />
+                            </MudTooltip>
+                        </div>
+                    </div>
+
+                    <div class="mb-3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">MÓDULO DO SISTEMA</MudText>
+                        <MudText Typo="Typo.body2" Style="font-weight: 600;">@(card.ChamadoModulo?.Descricao ?? "Geral")</MudText>
+                    </div>
+
+                    <div class="mb-3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">CLIENTE VINCULADO</MudText>
+                        <MudText Typo="Typo.body2">@(string.IsNullOrEmpty(card.ClienteNome) ? "Não Informado" : card.ClienteNome)</MudText>
+                    </div>
+
+                    <div class="mb-3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">CRIADO POR</MudText>
+                        <MudText Typo="Typo.body2">@(card.Usuario?.LoginName ?? "Sistema")</MudText>
+                    </div>
+
+                    <div class="mb-3">
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">DATA DE CRIAÇÃO</MudText>
+                        <MudText Typo="Typo.body2">@card.Data.ToString("dd/MM/yyyy HH:mm")</MudText>
+                    </div>
+
+                    @if (!string.IsNullOrWhiteSpace(card.LinkBase))
+                    {
+                        <div class="mb-3">
+                            <MudText Typo="Typo.caption" Color="Color.Secondary">LINK / REPOSITÓRIO</MudText>
+                            <div>
+                                <MudLink Href="@card.LinkBase" Target="_blank" Typo="Typo.body2">
+                                    <MudIcon Icon="@Icons.Material.Filled.Launch" Size="Size.Small" Class="mr-1" />
+                                    Abrir Link Externo
+                                </MudLink>
+                            </div>
+                        </div>
+                    }
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter] public int Id { get; set; }
+
+    private bool loading = true;
+    private DesenvCard card;
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Início", href: "/"),
+            new BreadcrumbItem("Desenvolvimento", href: "/desenvolvimento"),
+            new BreadcrumbItem($"Demanda #{Id}", href: null, disabled: true)
+        };
+
+        await CarregarCard();
+    }
+
+    private async Task CarregarCard()
+    {
+        loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            card = await ctx.DesenvCard
+                .Include(c => c.ChamadoModulo)
+                .Include(c => c.DesenvCardStatus)
+                .Include(c => c.Usuario)
+                .AsNoTracking()
+                .FirstOrDefaultAsync(c => c.Id == Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar card: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task AbrirAlteracaoStatus()
+    {
+        var parameters = new DialogParameters
+        {
+            { "CardId", card.Id },
+            { "RotuloCard", card.Rotulo },
+            { "StatusAtualId", card.DesenvCardStatusId }
+        };
+
+        var dialog = await DialogService.ShowAsync<DialogAlteraStatusDesenv>("Alterar Status", parameters, new DialogOptions { MaxWidth = MaxWidth.Small, FullWidth = true });
+        var result = await dialog.Result;
+
+        if (!result.Canceled)
+        {
+            await CarregarCard();
+        }
+    }
+
+    private Color GetStatusColor(int statusId) => statusId switch
+    {
+        1 => Color.Default,
+        2 => Color.Info,
+        3 => Color.Warning,
+        4 => Color.Secondary,
+        5 => Color.Tertiary,
+        6 => Color.Success,
+        7 => Color.Success,
+        8 => Color.Success,
+        _ => Color.Primary
+    };
+}

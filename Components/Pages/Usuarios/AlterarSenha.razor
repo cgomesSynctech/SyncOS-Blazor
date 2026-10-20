@@ -1,0 +1,132 @@
+@page "/usuarios/alterar-senha"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject AuthService Auth
+
+<PageTitle>Alterar Senha - SyncOS</PageTitle>
+
+<div class="mb-4">
+    <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0 mb-2" />
+    <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+        <MudIcon Icon="@Icons.Material.Filled.LockReset" Class="mr-2" Color="Color.Primary" />
+        Alterar Minha Senha
+    </MudText>
+    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+        Atualize sua senha de acesso ao sistema SyncOS
+    </MudText>
+</div>
+
+<div class="d-flex justify-center">
+    <MudCard Elevation="3" Class="rounded-lg" Style="max-width: 500px; width: 100%;">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <div class="d-flex align-center">
+                    <MudAvatar Color="Color.Primary" Class="mr-3">
+                        @(string.IsNullOrEmpty(Auth.CurrentUser?.LoginName) ? "U" : Auth.CurrentUser.LoginName[0].ToString().ToUpper())
+                    </MudAvatar>
+                    <div>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">@Auth.CurrentUser?.LoginName</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">@Auth.CurrentUser?.Email</MudText>
+                    </div>
+                </div>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <MudGrid Spacing="3">
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="novaSenha"
+                                  Label="Nova Senha *"
+                                  InputType="@(mostrarSenha ? InputType.Text : InputType.Password)"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense"
+                                  Adornment="Adornment.End"
+                                  AdornmentIcon="@(mostrarSenha ? Icons.Material.Filled.Visibility : Icons.Material.Filled.VisibilityOff)"
+                                  OnAdornmentClick="@(() => mostrarSenha = !mostrarSenha)" />
+                </MudItem>
+
+                <MudItem xs="12">
+                    <MudTextField @bind-Value="confirmaSenha"
+                                  Label="Confirmar Nova Senha *"
+                                  InputType="@(mostrarSenha ? InputType.Text : InputType.Password)"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+                </MudItem>
+            </MudGrid>
+
+            <div class="d-flex justify-end gap-3 mt-6">
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/usuarios">
+                    Cancelar
+                </MudButton>
+                <MudButton Variant="Variant.Filled" Color="Color.Primary" OnClick="SalvarSenha" Disabled="@salvando">
+                    @if (salvando)
+                    {
+                        <MudProgressCircular Class="ms-n1 me-2" Size="Size.Small" Indeterminate="true" />
+                        <span>Atualizando...</span>
+                    }
+                    else
+                    {
+                        <span>Salvar Nova Senha</span>
+                    }
+                </MudButton>
+            </div>
+        </MudCardContent>
+    </MudCard>
+</div>
+
+@code {
+    private string novaSenha = "";
+    private string confirmaSenha = "";
+    private bool mostrarSenha = false;
+    private bool salvando = false;
+
+    private List<BreadcrumbItem> _breadcrumbItems = new()
+    {
+        new BreadcrumbItem("Início", href: "/"),
+        new BreadcrumbItem("Usuários", href: "/usuarios"),
+        new BreadcrumbItem("Alterar Senha", href: null, disabled: true)
+    };
+
+    private async Task SalvarSenha()
+    {
+        if (string.IsNullOrWhiteSpace(novaSenha))
+        {
+            Snackbar.Add("Por favor, digite a nova senha.", Severity.Warning);
+            return;
+        }
+
+        if (novaSenha != confirmaSenha)
+        {
+            Snackbar.Add("As senhas não conferem. Verifique e tente novamente.", Severity.Warning);
+            return;
+        }
+
+        salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var userId = Auth.CurrentUser?.Id ?? 1;
+            var usuario = await ctx.Usuarios.FindAsync(userId);
+            if (usuario == null)
+            {
+                Snackbar.Add("Usuário não encontrado.", Severity.Error);
+                return;
+            }
+
+            usuario.LoginPass = novaSenha;
+            usuario.LoginPass = ToPassWord.Get(usuario);
+            await ctx.SaveChangesAsync();
+
+            Snackbar.Add("Senha alterada com sucesso!", Severity.Success);
+            Navigation.NavigateTo("/usuarios");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao alterar senha: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+}

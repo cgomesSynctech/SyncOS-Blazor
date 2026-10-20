@@ -1,0 +1,426 @@
+@page "/parcelas/novo"
+@page "/parcelas/editar/{Id:int}"
+@using System.Text.RegularExpressions
+@using System.Globalization
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>@(IsEdit ? "Editar Parcela" : "Nova Parcela") - SyncOS</PageTitle>
+
+<div class="mb-4">
+    <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0 mb-2" />
+    <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+        @(IsEdit ? $"Editar Parcela #{Id} - {parcela.NomeCliente}" : "Cadastrar Nova Parcela")
+    </MudText>
+    <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+        Títulos só podem ser gerados para clientes devidamente cadastrados no sistema
+    </MudText>
+</div>
+
+@if (loading)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else
+{
+    <MudCard Elevation="3" Class="rounded-lg" Style="max-width: 900px;">
+        <MudCardHeader>
+            <CardHeaderContent>
+                <MudText Typo="Typo.h6" Style="font-weight: 600;">
+                    <MudIcon Icon="@(IsEdit ? Icons.Material.Filled.Edit : Icons.Material.Filled.PostAdd)" Class="mr-2" Color="Color.Primary" />
+                    Dados do Título / Parcela
+                </MudText>
+            </CardHeaderContent>
+        </MudCardHeader>
+        <MudCardContent>
+            <EditForm Model="@parcela" OnValidSubmit="SalvarParcela">
+                <DataAnnotationsValidator />
+
+                <MudGrid Spacing="3">
+                    <!-- Seleção de Cliente Cadastrado -->
+                    <MudItem xs="12">
+                        <MudAutocomplete T="Cliente"
+                                         Label="Cliente Cadastrado *"
+                                         Value="_clienteSelecionado"
+                                         ValueChanged="@OnClienteChanged"
+                                         SearchFunc="@BuscarClientes"
+                                         ToStringFunc="@FormatarClienteToString"
+                                         ResetValueOnEmptyText="false"
+                                         CoerceText="true"
+                                         Dense="true"
+                                         Variant="Variant.Outlined"
+                                         Placeholder="Pesquise por Razão Social, Fantasia ou CPF/CNPJ..."
+                                         AdornmentIcon="@Icons.Material.Filled.Search"
+                                         Required="true"
+                                         RequiredError="É obrigatório selecionar um cliente cadastrado" />
+                    </MudItem>
+
+                    <!-- Painel com Dados do Cliente Selecionado -->
+                    @if (_clienteSelecionado != null)
+                    {
+                        <MudItem xs="12">
+                            <MudPaper Elevation="0" Class="pa-3 rounded-lg border bg-light">
+                                <div class="d-flex justify-space-between align-center flex-wrap gap-2">
+                                    <div>
+                                        <MudText Typo="Typo.subtitle2" Style="font-weight: 700; color: #1e40af;">
+                                            @_clienteSelecionado.Razao
+                                        </MudText>
+                                        <MudText Typo="Typo.body2" Color="Color.Secondary">
+                                            <b>Fantasia:</b> @(_clienteSelecionado.Fantasia ?? "-") |
+                                            <b>CPF/CNPJ:</b> <span style="font-family: monospace;">@FormatCgcCpf(_clienteSelecionado.CPF_CNPJ)</span> |
+                                            <b>Contrato Base:</b> @_clienteSelecionado.ValorContrato.ToString("C", ptBr)
+                                        </MudText>
+                                    </div>
+                                    <div class="d-flex align-center gap-2">
+                                        <MudChip T="string" Color="Color.Primary" Size="Size.Small" Variant="Variant.Outlined">
+                                            ID #@_clienteSelecionado.Id
+                                        </MudChip>
+                                        @if (_clienteSelecionado.Bloqueado)
+                                        {
+                                            <MudChip T="string" Color="Color.Warning" Size="Size.Small" Variant="Variant.Filled">Bloqueado</MudChip>
+                                        }
+                                        @if (_clienteSelecionado.Desativado)
+                                        {
+                                            <MudChip T="string" Color="Color.Error" Size="Size.Small" Variant="Variant.Filled">Desativado</MudChip>
+                                        }
+                                    </div>
+                                </div>
+                            </MudPaper>
+                        </MudItem>
+                    }
+
+                    <!-- Valor da Parcela -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudNumericField @bind-Value="parcela.Valor"
+                                         Label="Valor da Parcela (R$) *"
+                                         Format="N2"
+                                         Culture="@ptBr"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense"
+                                         Required="true"
+                                         RequiredError="Valor é obrigatório" />
+                    </MudItem>
+
+                    <!-- Juros de Vencimento -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudNumericField @bind-Value="parcela.Juros"
+                                         Label="Juros (R$)"
+                                         Format="N2"
+                                         Culture="@ptBr"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense" />
+                    </MudItem>
+
+                    <!-- Data de Vencimento -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudDatePicker @bind-Date="dataVencimentoNullable"
+                                       Label="Data de Vencimento *"
+                                       DateFormat="dd/MM/yyyy"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Required="true" />
+                    </MudItem>
+
+                    <!-- Status do Título -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudSelect T="string" @bind-Value="parcela.Status" Label="Status do Título *" Variant="Variant.Outlined" Margin="Margin.Dense" Required="true">
+                            <MudSelectItem Value="@("A")">A Vencer</MudSelectItem>
+                            <MudSelectItem Value="@("V")">Vencido</MudSelectItem>
+                            <MudSelectItem Value="@("L")">Liquidado / Pago</MudSelectItem>
+                        </MudSelect>
+                    </MudItem>
+
+                    <!-- Valor Pago -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudNumericField @bind-Value="parcela.ValorPago"
+                                         Label="Valor Pago (R$)"
+                                         Format="N2"
+                                         Culture="@ptBr"
+                                         Variant="Variant.Outlined"
+                                         Margin="Margin.Dense" />
+                    </MudItem>
+
+                    <!-- Data de Pagamento -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudDatePicker @bind-Date="dataPagamentoNullable"
+                                       Label="Data de Pagamento"
+                                       DateFormat="dd/MM/yyyy"
+                                       Variant="Variant.Outlined"
+                                       Margin="Margin.Dense"
+                                       Clearable="true" />
+                    </MudItem>
+
+                    <!-- Telefone de Contato -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField @bind-Value="parcela.Fone"
+                                      Label="Telefone de Contato"
+                                      Placeholder="(00) 00000-0000"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    </MudItem>
+
+                    <!-- E-mail de Cobrança -->
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudTextField @bind-Value="parcela.Email"
+                                      Label="E-mail para Cobrança"
+                                      InputType="InputType.Email"
+                                      Placeholder="cliente@empresa.com.br"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    </MudItem>
+
+                    <!-- Observação -->
+                    <MudItem xs="12">
+                        <MudTextField @bind-Value="parcela.Observacao"
+                                      Label="Observação da Parcela"
+                                      Placeholder="Ex: Mensalidade de software..."
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense" />
+                    </MudItem>
+                </MudGrid>
+
+                <div class="d-flex justify-end gap-3 mt-6">
+                    <MudButton Variant="Variant.Outlined" Color="Color.Secondary" Href="/parcelas">
+                        Cancelar
+                    </MudButton>
+                    <MudButton ButtonType="ButtonType.Submit" Variant="Variant.Filled" Color="Color.Primary" Disabled="@salvando">
+                        @if (salvando)
+                        {
+                            <MudProgressCircular Class="ms-n1 me-2" Size="Size.Small" Indeterminate="true" />
+                            <span>Salvando...</span>
+                        }
+                        else
+                        {
+                            <span>@(IsEdit ? "Salvar Alterações" : "Cadastrar Parcela")</span>
+                        }
+                    </MudButton>
+                </div>
+            </EditForm>
+        </MudCardContent>
+    </MudCard>
+}
+
+@code {
+    private CultureInfo ptBr = new CultureInfo("pt-BR");
+
+    [Parameter] public int? Id { get; set; }
+    [SupplyParameterFromQuery(Name = "clienteId")] public int? ClienteIdParam { get; set; }
+
+    private bool IsEdit => Id.HasValue && Id.Value > 0;
+
+    private bool loading = true;
+    private bool salvando = false;
+
+    private Parcela parcela = new()
+    {
+        DataVencimento = DateTime.Today.AddDays(30),
+        Status = "A"
+    };
+
+    private Cliente _clienteSelecionado;
+    private DateTime? dataVencimentoNullable = DateTime.Today.AddDays(30);
+    private DateTime? dataPagamentoNullable;
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Início", href: "/"),
+            new BreadcrumbItem("Parcelas", href: "/parcelas"),
+            new BreadcrumbItem(IsEdit ? "Editar" : "Nova", href: null, disabled: true)
+        };
+
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            if (IsEdit)
+            {
+                var dbParcela = await ctx.Parcelas
+                    .Include(p => p.Cliente)
+                    .FirstOrDefaultAsync(p => p.Id == Id.Value);
+
+                if (dbParcela == null)
+                {
+                    Snackbar.Add("Parcela não encontrada.", Severity.Error);
+                    Navigation.NavigateTo("/parcelas");
+                    return;
+                }
+
+                parcela = dbParcela;
+                dataVencimentoNullable = parcela.DataVencimento;
+                dataPagamentoNullable = parcela.DataPagamento;
+                _clienteSelecionado = parcela.Cliente ?? await ctx.Clientes.FindAsync(parcela.ClienteId);
+            }
+            else
+            {
+                if (ClienteIdParam.HasValue && ClienteIdParam.Value > 0)
+                {
+                    var cli = await ctx.Clientes.FindAsync(ClienteIdParam.Value);
+                    if (cli != null)
+                    {
+                        OnClienteChanged(cli);
+                    }
+                }
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar dados: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task<IEnumerable<Cliente>> BuscarClientes(string value, CancellationToken token)
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            if (string.IsNullOrWhiteSpace(value))
+            {
+                return await ctx.Clientes
+                    .AsNoTracking()
+                    .Where(c => !c.Desativado)
+                    .OrderBy(c => c.Razao)
+                    .Take(25)
+                    .ToListAsync(token);
+            }
+
+            var termo = value.Trim().ToLower();
+            var digitos = Regex.Replace(value, @"[^\d]", "");
+
+            return await ctx.Clientes
+                .AsNoTracking()
+                .Where(c => (c.Razao != null && c.Razao.ToLower().Contains(termo)) ||
+                            (c.Fantasia != null && c.Fantasia.ToLower().Contains(termo)) ||
+                            (c.CPF_CNPJ != null && c.CPF_CNPJ.Contains(termo)) ||
+                            (!string.IsNullOrEmpty(digitos) && c.CPF_CNPJ != null && c.CPF_CNPJ.Contains(digitos)) ||
+                            c.Id.ToString() == termo)
+                .OrderBy(c => c.Razao)
+                .Take(30)
+                .ToListAsync(token);
+        }
+        catch
+        {
+            return Array.Empty<Cliente>();
+        }
+    }
+
+    private string FormatarClienteToString(Cliente c)
+    {
+        if (c == null) return "";
+        var doc = FormatCgcCpf(c.CPF_CNPJ);
+        var nome = !string.IsNullOrWhiteSpace(c.Razao) ? c.Razao : c.Fantasia;
+        return $"{nome} (CNPJ/CPF: {doc})";
+    }
+
+    private void OnClienteChanged(Cliente cliente)
+    {
+        _clienteSelecionado = cliente;
+        if (cliente != null)
+        {
+            parcela.ClienteId = cliente.Id;
+            parcela.NomeCliente = !string.IsNullOrWhiteSpace(cliente.Razao) ? cliente.Razao : cliente.Fantasia;
+            parcela.CPFCNPJ = cliente.CPF_CNPJ;
+            parcela.Fone = !string.IsNullOrWhiteSpace(cliente.WhatsApp) ? cliente.WhatsApp : cliente.Contato;
+            parcela.Email = cliente.Email;
+
+            if (!IsEdit || parcela.Valor == 0)
+            {
+                parcela.Valor = (decimal)cliente.ValorContrato;
+            }
+        }
+        else
+        {
+            parcela.ClienteId = 0;
+            parcela.NomeCliente = "";
+            parcela.CPFCNPJ = "";
+        }
+    }
+
+    private async Task SalvarParcela()
+    {
+        if (parcela.ClienteId <= 0 || _clienteSelecionado == null)
+        {
+            Snackbar.Add("Atenção: É obrigatório selecionar um cliente cadastrado para a parcela.", Severity.Warning);
+            return;
+        }
+
+        salvando = true;
+        try
+        {
+            parcela.DataVencimento = dataVencimentoNullable ?? DateTime.Today;
+            parcela.DataPagamento = dataPagamentoNullable;
+
+            // Limpa caracteres não numéricos
+            if (!string.IsNullOrEmpty(parcela.CPFCNPJ))
+            {
+                parcela.CPFCNPJ = Regex.Replace(parcela.CPFCNPJ, @"[^\d]", "");
+            }
+            if (!string.IsNullOrEmpty(parcela.Fone))
+            {
+                parcela.Fone = Regex.Replace(parcela.Fone, @"[^\d]", "");
+            }
+
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            if (IsEdit)
+            {
+                var dbParcela = await ctx.Parcelas.FindAsync(parcela.Id);
+                if (dbParcela != null)
+                {
+                    dbParcela.ClienteId = parcela.ClienteId;
+                    dbParcela.NomeCliente = parcela.NomeCliente;
+                    dbParcela.CPFCNPJ = parcela.CPFCNPJ;
+                    dbParcela.Valor = parcela.Valor;
+                    dbParcela.DataVencimento = parcela.DataVencimento;
+                    dbParcela.Status = parcela.Status;
+                    dbParcela.Fone = parcela.Fone;
+                    dbParcela.Email = parcela.Email;
+                    dbParcela.Observacao = parcela.Observacao;
+                    dbParcela.Juros = parcela.Juros;
+                    dbParcela.ValorPago = parcela.ValorPago;
+                    dbParcela.DataPagamento = parcela.DataPagamento;
+
+                    await ctx.SaveChangesAsync();
+                    Snackbar.Add("Parcela atualizada com sucesso!", Severity.Success);
+                }
+            }
+            else
+            {
+                ctx.Parcelas.Add(parcela);
+                await ctx.SaveChangesAsync();
+                Snackbar.Add($"Parcela de {parcela.NomeCliente} ({parcela.Valor.ToString("C", ptBr)}) cadastrada com sucesso!", Severity.Success);
+            }
+
+            Navigation.NavigateTo("/parcelas");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao salvar parcela: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+
+    private string FormatCgcCpf(string doc)
+    {
+        if (string.IsNullOrEmpty(doc)) return "-";
+        var nums = Regex.Replace(doc, @"[^\d]", "");
+        if (nums.Length == 11)
+            return $"{nums.Substring(0, 3)}.{nums.Substring(3, 3)}.{nums.Substring(6, 3)}-{nums.Substring(9, 2)}";
+        if (nums.Length == 14)
+            return $"{nums.Substring(0, 2)}.{nums.Substring(2, 3)}.{nums.Substring(5, 3)}/{nums.Substring(8, 4)}-{nums.Substring(12, 2)}";
+        return doc;
+    }
+}

@@ -1,0 +1,281 @@
+@page "/chamados/detalhes/{Id:int}"
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+
+<PageTitle>Detalhes do Chamado #@Id - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudText Typo="Typo.h5" Style="font-weight: 700;">Detalhes do Chamado #@Id</MudText>
+        <MudText Typo="Typo.caption" Color="Color.Secondary">Consulta completa das informações e histórico do atendimento</MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Default" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/chamados">
+            Voltar
+        </MudButton>
+        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.EditNote" Href="@($"/chamados/editar/{Id}")">
+            Atender / Editar
+        </MudButton>
+    </div>
+</div>
+
+@if (_carregando)
+{
+    <div class="d-flex justify-center align-center pa-12">
+        <MudProgressCircular Indeterminate="true" Color="Color.Primary" Size="Size.Large" />
+    </div>
+}
+else if (_chamado == null)
+{
+    <MudAlert Severity="Severity.Error">Chamado não encontrado.</MudAlert>
+}
+else
+{
+    <MudGrid Spacing="3">
+        @* BANNER RESUMO *@
+        <MudItem xs="12">
+            <MudPaper Elevation="1" Class="pa-4 d-flex justify-space-between align-center flex-wrap gap-4" Style="background: linear-gradient(135deg, var(--mud-palette-surface) 0%, var(--mud-palette-background-grey) 100%);">
+                <div>
+                    <MudText Typo="Typo.caption" Color="Color.Secondary">PROTOCOLO DE AUTORIZAÇÃO</MudText>
+                    <MudText Typo="Typo.h5" Style="font-family: monospace; font-weight: 700;">@_chamado.ProtocoloAutorizacao</MudText>
+                    <MudText Typo="Typo.body2" Color="Color.Secondary">
+                        Solicitado por: <strong>@_chamado.Interlocutor</strong> em @_chamado.DataAbertura.ToString("dd/MM/yyyy")
+                    </MudText>
+                </div>
+                <div class="d-flex gap-2 flex-wrap">
+                    <MudChip T="string" Color="@GetStatusColor(_chamado.ChamadoStatusId)" Size="Size.Medium" Variant="Variant.Filled">
+                        @(_chamado.Status?.Descricao ?? $"Status {_chamado.ChamadoStatusId}")
+                    </MudChip>
+                    <MudChip T="string" Color="@GetPrioridadeColor(_chamado.ChamadoPrioridadeId)" Size="Size.Medium" Variant="Variant.Outlined">
+                        Prioridade: @(_chamado.Prioridade?.Descricao ?? "Normal")
+                    </MudChip>
+                    @if (_chamado.IsSolucionado)
+                    {
+                        <MudChip T="string" Color="Color.Success" Size="Size.Medium" Variant="Variant.Filled" Icon="@Icons.Material.Filled.Check">
+                            Solucionado
+                        </MudChip>
+                    }
+                    @if (_chamado.IsImprocedente)
+                    {
+                        <MudChip T="string" Color="Color.Warning" Size="Size.Medium" Variant="Variant.Filled">
+                            Improcedente
+                        </MudChip>
+                    }
+                </div>
+            </MudPaper>
+        </MudItem>
+
+        @* CLIENTE E ATENDIMENTO *@
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="1" Class="h-100">
+                <MudCardHeader>
+                    <CardHeaderAvatar>
+                        <MudAvatar Color="Color.Primary" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Business" />
+                        </MudAvatar>
+                    </CardHeaderAvatar>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Dados do Cliente</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">#@_chamado.ClienteId - @(_chamado.Cliente?.Fantasia ?? _chamado.Cliente?.Razao)</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSimpleTable Dense="true" Hover="false" Elevation="0">
+                        <tbody>
+                            <tr>
+                                <td style="width: 140px; font-weight: 600; color: var(--mud-palette-text-secondary);">Razão Social:</td>
+                                <td>@(_chamado.Cliente?.Razao ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--mud-palette-text-secondary);">Nome Fantasia:</td>
+                                <td>@(_chamado.Cliente?.Fantasia ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--mud-palette-text-secondary);">CPF / CNPJ:</td>
+                                <td>@(_chamado.Cliente?.CPF_CNPJ ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--mud-palette-text-secondary);">Contato:</td>
+                                <td>@(_chamado.Cliente?.Contato ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--mud-palette-text-secondary);">WhatsApp:</td>
+                                <td>@(_chamado.Cliente?.WhatsApp ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--mud-palette-text-secondary);">Cidade / UF:</td>
+                                <td>@(_chamado.Cliente?.Municipio?.Descricao) - @(_chamado.Cliente?.UFId)</td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        <MudItem xs="12" md="6">
+            <MudCard Elevation="1" Class="h-100">
+                <MudCardHeader>
+                    <CardHeaderAvatar>
+                        <MudAvatar Color="Color.Secondary" Variant="Variant.Filled">
+                            <MudIcon Icon="@Icons.Material.Filled.Info" />
+                        </MudAvatar>
+                    </CardHeaderAvatar>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.subtitle1" Style="font-weight: 600;">Classificação & Equipe</MudText>
+                        <MudText Typo="Typo.caption" Color="Color.Secondary">Parâmetros operacionais do chamado</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudSimpleTable Dense="true" Hover="false" Elevation="0">
+                        <tbody>
+                            <tr>
+                                <td style="width: 150px; font-weight: 600; color: var(--mud-palette-text-secondary);">Módulo:</td>
+                                <td>@(_chamado.Modulo?.Descricao ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--mud-palette-text-secondary);">Motivo:</td>
+                                <td>@(_chamado.Motivo?.Descricao ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--mud-palette-text-secondary);">Forma Atendimento:</td>
+                                <td>@(_chamado.Forma?.Descricao ?? "-")</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--mud-palette-text-secondary);">Aberto por:</td>
+                                <td>@(_chamado.Usuario?.LoginName ?? "-") (@(_chamado.Usuario?.Email))</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--mud-palette-text-secondary);">Técnico Designado:</td>
+                                <td>@(_chamado.Tecnico?.LoginName ?? "-") (@(_chamado.Tecnico?.Email))</td>
+                            </tr>
+                            <tr>
+                                <td style="font-weight: 600; color: var(--mud-palette-text-secondary);">Atendimento / Fim:</td>
+                                <td>
+                                    @(_chamado.DataAtendimento != DateTime.MinValue ? _chamado.DataAtendimento.ToString("dd/MM/yyyy") : "Não atendido") /
+                                    @(_chamado.DataFinalizacao != DateTime.MinValue ? _chamado.DataFinalizacao.ToString("dd/MM/yyyy") : "Em aberto")
+                                </td>
+                            </tr>
+                        </tbody>
+                    </MudSimpleTable>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+
+        @* DESCRIÇÃO, ANÁLISE TÉCNICA E RESOLUÇÃO *@
+        <MudItem xs="12">
+            <MudCard Elevation="1">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6">Histórico & Detalhamento do Atendimento</MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12">
+                            <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Color="Color.Primary">
+                                Alegação do Cliente (Problema Reportado):
+                            </MudText>
+                            <MudPaper Elevation="0" Class="pa-3 mt-1" Style="background-color: var(--mud-palette-background-grey); border-left: 4px solid var(--mud-palette-primary); border-radius: 4px;">
+                                <MudText Typo="Typo.body1" Style="white-space: pre-wrap;">@_chamado.AlegacaoCliente</MudText>
+                            </MudPaper>
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Color="Color.Warning">
+                                Apuração / Diagnóstico Técnico:
+                            </MudText>
+                            <MudPaper Elevation="0" Class="pa-3 mt-1" Style="background-color: var(--mud-palette-background-grey); border-left: 4px solid var(--mud-palette-warning); border-radius: 4px; min-height: 100px;">
+                                @if (!string.IsNullOrWhiteSpace(_chamado.AlegacaoTecnico))
+                                {
+                                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@_chamado.AlegacaoTecnico</MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Nenhum diagnóstico registrado até o momento.</MudText>
+                                }
+                            </MudPaper>
+                        </MudItem>
+
+                        <MudItem xs="12" md="6">
+                            <MudText Typo="Typo.subtitle2" Style="font-weight: 600;" Color="Color.Success">
+                                Resolução / Procedimento Adotado:
+                            </MudText>
+                            <MudPaper Elevation="0" Class="pa-3 mt-1" Style="background-color: var(--mud-palette-background-grey); border-left: 4px solid var(--mud-palette-success); border-radius: 4px; min-height: 100px;">
+                                @if (!string.IsNullOrWhiteSpace(_chamado.Resolucao))
+                                {
+                                    <MudText Typo="Typo.body2" Style="white-space: pre-wrap;">@_chamado.Resolucao</MudText>
+                                }
+                                else
+                                {
+                                    <MudText Typo="Typo.caption" Color="Color.Secondary">Nenhuma resolução registrada até o momento.</MudText>
+                                }
+                            </MudPaper>
+                        </MudItem>
+                    </MudGrid>
+                </MudCardContent>
+            </MudCard>
+        </MudItem>
+    </MudGrid>
+}
+
+@code {
+    [Parameter]
+    public int Id { get; set; }
+
+    private Chamado _chamado;
+    private bool _carregando = true;
+
+    protected override async Task OnInitializedAsync()
+    {
+        _carregando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            _chamado = await ctx.Chamados
+                .AsNoTracking()
+                .Include(c => c.Cliente)
+                    .ThenInclude(cli => cli.Municipio)
+                .Include(c => c.Modulo)
+                .Include(c => c.Motivo)
+                .Include(c => c.Forma)
+                .Include(c => c.Prioridade)
+                .Include(c => c.Status)
+                .Include(c => c.Tecnico)
+                .Include(c => c.Usuario)
+                .FirstOrDefaultAsync(c => c.Id == Id);
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar detalhes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            _carregando = false;
+        }
+    }
+
+    private Color GetStatusColor(int statusId)
+    {
+        return statusId switch
+        {
+            0 => Color.Success,
+            1 => Color.Warning,
+            2 => Color.Secondary,
+            3 => Color.Tertiary,
+            6 => Color.Info,
+            7 => Color.Dark,
+            _ => Color.Default
+        };
+    }
+
+    private Color GetPrioridadeColor(int prioridadeId)
+    {
+        return prioridadeId switch
+        {
+            3 => Color.Error,
+            2 => Color.Warning,
+            _ => Color.Default
+        };
+    }
+}

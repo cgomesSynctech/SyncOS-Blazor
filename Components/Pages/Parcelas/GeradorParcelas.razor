@@ -1,0 +1,1021 @@
+@page "/parcelas/gerador"
+@page "/parcelas/geracao-lote"
+@using System.Text.RegularExpressions
+@using System.Globalization
+@inject IDbContextFactory<APPDbContext> DbFactory
+@inject NavigationManager Navigation
+@inject ISnackbar Snackbar
+@inject IDialogService DialogService
+
+<PageTitle>Geração Rápida de Parcelas em Lote - SyncOS</PageTitle>
+
+<div class="d-flex justify-space-between align-center mb-4">
+    <div>
+        <MudBreadcrumbs Items="_breadcrumbItems" Class="pa-0 mb-2" />
+        <MudText Typo="Typo.h5" Style="font-weight: 700; color: #1e293b;">
+            <MudIcon Icon="@Icons.Material.Filled.Bolt" Class="mr-2" Color="Color.Warning" />
+            Geração de Parcelas em Lote
+        </MudText>
+        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+            Selecione múltiplos clientes, ajuste os valores e juros de vencimento e gere todos os títulos em lote
+        </MudText>
+    </div>
+    <div class="d-flex gap-2">
+        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ArrowBack" Href="/parcelas">
+            Voltar para Parcelas
+        </MudButton>
+    </div>
+</div>
+
+<!-- Stepper Visual de Navegação -->
+<MudPaper Elevation="2" Class="pa-4 mb-4 rounded-lg">
+    <div class="d-flex justify-space-around align-center flex-wrap gap-2">
+        <MudButton Variant="@(etapaAtual == 1 ? Variant.Filled : Variant.Text)"
+                   Color="@(etapaAtual == 1 ? Color.Primary : Color.Default)"
+                   StartIcon="@Icons.Material.Filled.People"
+                   OnClick="@(() => MudarEtapa(1))">
+            1. Selecionar Clientes (@itensSelecionados.Count)
+        </MudButton>
+
+        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Secondary" />
+
+        <MudButton Variant="@(etapaAtual == 2 ? Variant.Filled : Variant.Text)"
+                   Color="@(etapaAtual == 2 ? Color.Primary : Color.Default)"
+                   StartIcon="@Icons.Material.Filled.Tune"
+                   Disabled="@(itensSelecionados.Count == 0)"
+                   OnClick="@(() => MudarEtapa(2))">
+            2. Configurar Parâmetros & Juros
+        </MudButton>
+
+        <MudIcon Icon="@Icons.Material.Filled.ChevronRight" Color="Color.Secondary" />
+
+        <MudButton Variant="@(etapaAtual == 3 ? Variant.Filled : Variant.Text)"
+                   Color="@(etapaAtual == 3 ? Color.Primary : Color.Default)"
+                   StartIcon="@Icons.Material.Filled.ChecklistRtl"
+                   Disabled="@(parcelasPrevia.Count == 0)"
+                   OnClick="@(() => MudarEtapa(3))">
+            3. Confirmar e Gravar (@parcelasPrevia.Count)
+        </MudButton>
+    </div>
+</MudPaper>
+
+@if (loading)
+{
+    <div class="d-flex justify-center my-8">
+        <MudProgressCircular Color="Color.Primary" Indeterminate="true" Size="Size.Large" />
+    </div>
+}
+else
+{
+    @* ==========================================
+       ETAPA 1: SELEÇÃO DE CLIENTES & VALORES
+       ========================================== *@
+    @if (etapaAtual == 1)
+    {
+        <!-- Filtros de Clientes -->
+        <MudCard Elevation="2" Class="mb-4 rounded-lg">
+            <MudCardContent>
+                <MudGrid Spacing="2" Class="align-center">
+                    <MudItem xs="12" md="5">
+                        <MudTextField @bind-Value="buscaCliente"
+                                      Placeholder="Pesquisar por Razão, Fantasia ou CNPJ..."
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Immediate="true"
+                                      DebounceInterval="300"
+                                      OnDebounceIntervalElapsed="FiltrarClientes"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Clearable="true"
+                                      OnClearButtonClick="LimparBuscaCliente" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3">
+                        <MudCheckBox T="bool"
+                                     Value="somenteComValores"
+                                     Label="Apenas com valor contratual > 0"
+                                     Color="Color.Primary"
+                                     Dense="true"
+                                     ValueChanged="OnFiltroValorChanged" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="2">
+                        <MudCheckBox T="bool"
+                                     Value="apenasAtivos"
+                                     Label="Apenas Ativos"
+                                     Color="Color.Success"
+                                     Dense="true"
+                                     ValueChanged="OnFiltroAtivosChanged" />
+                    </MudItem>
+
+                    <MudItem xs="12" md="2" Class="d-flex justify-end gap-2">
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Secondary" OnClick="SelecionarTodosFiltrados">
+                            Marcar Todos
+                        </MudButton>
+                        <MudButton Variant="Variant.Outlined" Size="Size.Small" Color="Color.Default" OnClick="DesmarcarTodos">
+                            Limpar
+                        </MudButton>
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Barra de Ação da Seleção -->
+        <MudAlert Severity="Severity.Info" Variant="Variant.Filled" Class="mb-3 d-flex justify-space-between align-center">
+            <div class="d-flex align-center flex-wrap gap-2">
+                <MudText Typo="Typo.subtitle1" Style="font-weight: 700;">
+                    @itensSelecionados.Count cliente(s) selecionado(s)
+                </MudText>
+                <span class="mx-2">|</span>
+                <MudText Typo="Typo.subtitle2">
+                    Soma das Parcelas Selecionadas: <b>@TotalParcelasSelecionadas.ToString("C")</b>
+                </MudText>
+                <span class="mx-2">|</span>
+                <MudText Typo="Typo.caption">
+                    Dica: Ao alterar qualquer valor (Contrato, Backup, TEF, etc.) e sair do campo, o cliente é salvo no banco e o valor é enviado para a parcela.
+                </MudText>
+            </div>
+            <div>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Dark"
+                           StartIcon="@Icons.Material.Filled.ArrowForward"
+                           Disabled="@(itensSelecionados.Count == 0)"
+                           OnClick="@(() => MudarEtapa(2))">
+                    Avançar para Parâmetros (@itensSelecionados.Count)
+                </MudButton>
+            </div>
+        </MudAlert>
+
+        <!-- Grid de Clientes com Edição Inline -->
+        <MudTable Items="@itensFiltrados"
+                  MultiSelection="true"
+                  @bind-SelectedItems="itensSelecionados"
+                  Hover="true"
+                  Striped="true"
+                  Elevation="2"
+                  Dense="true"
+                  HorizontalScrollbar="true"
+                  RowsPerPage="15">
+            <HeaderContent>
+                <MudTh>ID</MudTh>
+                <MudTh>Razão Social</MudTh>
+                <MudTh>Fantasia</MudTh>
+                <MudTh>CNPJ / CPF</MudTh>
+                <MudTh Style="width: 140px; text-align: right;">Contrato (R$)</MudTh>
+                <MudTh Style="width: 130px; text-align: right;">Backup (R$)</MudTh>
+                <MudTh Style="width: 130px; text-align: right;">TEF (R$)</MudTh>
+                <MudTh Style="width: 130px; text-align: right;">SPED (R$)</MudTh>
+                <MudTh Style="width: 130px; text-align: right;">Manifesto (R$)</MudTh>
+                <MudTh Style="width: 160px; text-align: right; font-weight: 700; color: #1e40af;">Valor Parcela (R$)</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="ID">
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">#@context.Cliente.Id</MudText>
+                </MudTd>
+                <MudTd DataLabel="Razão Social">
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.Cliente.Razao</MudText>
+                </MudTd>
+                <MudTd DataLabel="Fantasia">
+                    <MudText Typo="Typo.body2">@context.Cliente.Fantasia</MudText>
+                </MudTd>
+                <MudTd DataLabel="CNPJ / CPF">
+                    <MudText Typo="Typo.body2" Style="font-family: monospace;">@FormatCgcCpf(context.Cliente.CPF_CNPJ)</MudText>
+                </MudTd>
+
+                <!-- Valor Contrato / Manutenção -->
+                <MudTd DataLabel="Contrato" Style="text-align: right;">
+                    <MudNumericField Value="@context.Cliente.ValorContrato"
+                                     ValueChanged="@((double v) => context.Cliente.ValorContrato = v)"
+                                     OnBlur="@(() => SalvarCampoCliente(context, nameof(Cliente.ValorContrato), context.Cliente.ValorContrato))"
+                                     Format="N2"
+                                     Culture="@ptBr"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense" />
+                </MudTd>
+
+                <!-- Valor Backup -->
+                <MudTd DataLabel="Backup" Style="text-align: right;">
+                    <MudNumericField Value="@context.Cliente.ValorContratoBackup"
+                                     ValueChanged="@((double v) => context.Cliente.ValorContratoBackup = v)"
+                                     OnBlur="@(() => SalvarCampoCliente(context, nameof(Cliente.ValorContratoBackup), context.Cliente.ValorContratoBackup))"
+                                     Format="N2"
+                                     Culture="@ptBr"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense" />
+                </MudTd>
+
+                <!-- Valor TEF -->
+                <MudTd DataLabel="TEF" Style="text-align: right;">
+                    <MudNumericField Value="@context.Cliente.ValorTef"
+                                     ValueChanged="@((double v) => context.Cliente.ValorTef = v)"
+                                     OnBlur="@(() => SalvarCampoCliente(context, nameof(Cliente.ValorTef), context.Cliente.ValorTef))"
+                                     Format="N2"
+                                     Culture="@ptBr"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense" />
+                </MudTd>
+
+                <!-- Valor SPED -->
+                <MudTd DataLabel="SPED" Style="text-align: right;">
+                    <MudNumericField Value="@context.Cliente.ValorSped"
+                                     ValueChanged="@((double v) => context.Cliente.ValorSped = v)"
+                                     OnBlur="@(() => SalvarCampoCliente(context, nameof(Cliente.ValorSped), context.Cliente.ValorSped))"
+                                     Format="N2"
+                                     Culture="@ptBr"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense" />
+                </MudTd>
+
+                <!-- Valor Manifesto -->
+                <MudTd DataLabel="Manifesto" Style="text-align: right;">
+                    <MudNumericField Value="@context.Cliente.ValorManifesto"
+                                     ValueChanged="@((double v) => context.Cliente.ValorManifesto = v)"
+                                     OnBlur="@(() => SalvarCampoCliente(context, nameof(Cliente.ValorManifesto), context.Cliente.ValorManifesto))"
+                                     Format="N2"
+                                     Culture="@ptBr"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense" />
+                </MudTd>
+
+                <!-- Valor da Parcela -->
+                <MudTd DataLabel="Valor Parcela" Style="text-align: right;">
+                    <MudNumericField @bind-Value="@context.ValorParcela"
+                                     Format="N2"
+                                     Culture="@ptBr"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Style="font-weight: 700; color: #1e40af;" />
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Clientes por página:" />
+            </PagerContent>
+        </MudTable>
+    }
+
+    @* ==========================================
+       ETAPA 2: CONFIGURAR PARÂMETROS & JUROS
+       ========================================== *@
+    @if (etapaAtual == 2)
+    {
+        <div class="d-flex justify-center">
+            <MudCard Elevation="3" Class="rounded-lg" Style="max-width: 850px; width: 100%;">
+                <MudCardHeader>
+                    <CardHeaderContent>
+                        <MudText Typo="Typo.h6" Style="font-weight: 700;">
+                            <MudIcon Icon="@Icons.Material.Filled.Tune" Class="mr-2" Color="Color.Primary" />
+                            Definição das Parcelas e Condições
+                        </MudText>
+                        <MudText Typo="Typo.subtitle2" Color="Color.Secondary">
+                            Configuração em lote para os <b>@itensSelecionados.Count</b> clientes selecionados
+                        </MudText>
+                    </CardHeaderContent>
+                </MudCardHeader>
+                <MudCardContent>
+                    <MudGrid Spacing="3">
+                        <MudItem xs="12">
+                            <MudAlert Severity="Severity.Normal" Dense="true">
+                                Serão geradas parcelas para <b>@itensSelecionados.Count clientes</b> selecionados.
+                                O valor base de cada parcela utiliza o <b>ValorContrato</b> (ou o valor ajustado individualmente no grid de clientes).
+                            </MudAlert>
+                        </MudItem>
+
+                        <!-- Quantidade de Parcelas -->
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="paramQtdParcelas"
+                                             Label="Quantidade de Parcelas por Cliente *"
+                                             Min="1"
+                                             Max="60"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Required="true" />
+                            <div class="d-flex gap-1 mt-1">
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramQtdParcelas = 1)">1x</MudButton>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramQtdParcelas = 3)">3x</MudButton>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramQtdParcelas = 6)">6x</MudButton>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramQtdParcelas = 12)">12x (Anual)</MudButton>
+                            </div>
+                        </MudItem>
+
+                        <!-- Juros Vencimento (Juros) -->
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="paramJurosVencimento"
+                                             Label="Juros Vencimento (R$) *"
+                                             Format="N2"
+                                             Culture="@ptBr"
+                                             Min="0"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense" />
+                            <div class="d-flex gap-1 mt-1">
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramJurosVencimento = 0)">R$ 0,00</MudButton>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramJurosVencimento = 2)">R$ 2,00</MudButton>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramJurosVencimento = 5)">R$ 5,00</MudButton>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramJurosVencimento = 10)">R$ 10,00</MudButton>
+                            </div>
+                        </MudItem>
+
+                        <!-- Dia do Vencimento -->
+                        <MudItem xs="12" sm="6">
+                            <MudNumericField @bind-Value="paramDiaVencimento"
+                                             Label="Dia do Mês para Vencimento (1 a 31) *"
+                                             Min="1"
+                                             Max="31"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense"
+                                             Required="true" />
+                            <div class="d-flex gap-1 mt-1">
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramDiaVencimento = 5)">Dia 05</MudButton>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramDiaVencimento = 10)">Dia 10</MudButton>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramDiaVencimento = 15)">Dia 15</MudButton>
+                                <MudButton Variant="Variant.Outlined" Size="Size.Small" OnClick="@(() => paramDiaVencimento = 20)">Dia 20</MudButton>
+                            </div>
+                        </MudItem>
+
+                        <!-- Mês da Primeira Parcela -->
+                        <MudItem xs="12" sm="3">
+                            <MudSelect T="int" @bind-Value="paramMesInicial" Label="Mês da 1ª Parcela *" Variant="Variant.Outlined" Margin="Margin.Dense">
+                                <MudSelectItem Value="1">01 - Jan</MudSelectItem>
+                                <MudSelectItem Value="2">02 - Fev</MudSelectItem>
+                                <MudSelectItem Value="3">03 - Mar</MudSelectItem>
+                                <MudSelectItem Value="4">04 - Abr</MudSelectItem>
+                                <MudSelectItem Value="5">05 - Mai</MudSelectItem>
+                                <MudSelectItem Value="6">06 - Jun</MudSelectItem>
+                                <MudSelectItem Value="7">07 - Jul</MudSelectItem>
+                                <MudSelectItem Value="8">08 - Ago</MudSelectItem>
+                                <MudSelectItem Value="9">09 - Set</MudSelectItem>
+                                <MudSelectItem Value="10">10 - Out</MudSelectItem>
+                                <MudSelectItem Value="11">11 - Nov</MudSelectItem>
+                                <MudSelectItem Value="12">12 - Dez</MudSelectItem>
+                            </MudSelect>
+                        </MudItem>
+
+                        <!-- Ano da Primeira Parcela -->
+                        <MudItem xs="12" sm="3">
+                            <MudNumericField @bind-Value="paramAnoInicial"
+                                             Label="Ano da 1ª Parcela *"
+                                             Min="2020"
+                                             Max="2035"
+                                             Variant="Variant.Outlined"
+                                             Margin="Margin.Dense" />
+                        </MudItem>
+
+                        <!-- Observação Geral -->
+                        <MudItem xs="12">
+                            <MudTextField @bind-Value="paramObservacao"
+                                          Label="Observação / Descrição da Parcela"
+                                          Placeholder="Ex: Mensalidade de Software SyncOS"
+                                          Variant="Variant.Outlined"
+                                          Margin="Margin.Dense" />
+                        </MudItem>
+                    </MudGrid>
+
+                    <div class="mt-4 pa-3 rounded border bg-light">
+                        <MudText Typo="Typo.subtitle2" Color="Color.Primary" Style="font-weight: 700;">
+                            Resumo do Cálculo:
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            • Serão geradas <b>@(itensSelecionados.Count * paramQtdParcelas) parcelas no total</b> (@paramQtdParcelas para cada um dos @itensSelecionados.Count clientes).
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            • Juros de Vencimento configurados: <b>@(paramJurosVencimento.HasValue ? paramJurosVencimento.Value.ToString("C") : "R$ 0,00")</b> por título.
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            • 1ª Parcela: <b>@(paramDiaVencimento.ToString("D2"))/@(paramMesInicial.ToString("D2"))/@paramAnoInicial</b>.
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            • Última Parcela: <b>@(CalcularDataUltimaParcela().ToString("dd/MM/yyyy"))</b>.
+                        </MudText>
+                        <MudText Typo="Typo.body2">
+                            • Montante Previsto Estimado: <b>@((TotalParcelasSelecionadas * paramQtdParcelas).ToString("C"))</b>.
+                        </MudText>
+                    </div>
+
+                    <div class="d-flex justify-space-between mt-6">
+                        <MudButton Variant="Variant.Outlined" Color="Color.Secondary" OnClick="@(() => MudarEtapa(1))">
+                            Voltar para Clientes
+                        </MudButton>
+                        <MudButton Variant="Variant.Filled" Color="Color.Primary" StartIcon="@Icons.Material.Filled.Bolt" OnClick="GerarPreviaParcelas">
+                            Gerar Pré-visualização
+                        </MudButton>
+                    </div>
+                </MudCardContent>
+            </MudCard>
+        </div>
+    }
+
+    @* ==========================================
+       ETAPA 3: CONFIRMAR, AUDITAR E SALVAR
+       ========================================== *@
+    @if (etapaAtual == 3)
+    {
+        <!-- Indicadores da Prévia -->
+        <MudGrid Class="mb-4">
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="rounded-lg pa-3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">TOTAL DE PARCELAS</MudText>
+                    <MudText Typo="Typo.h5" Color="Color.Primary" Style="font-weight: 700;">@parcelasPrevia.Count</MudText>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="rounded-lg pa-3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">CLIENTES ATENDIDOS</MudText>
+                    <MudText Typo="Typo.h5" Color="Color.Info" Style="font-weight: 700;">@parcelasPrevia.Select(p => p.ClienteId).Distinct().Count()</MudText>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="rounded-lg pa-3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">VALOR TOTAL A GERAR</MudText>
+                    <MudText Typo="Typo.h5" Color="Color.Success" Style="font-weight: 700;">@parcelasPrevia.Sum(p => p.Valor).ToString("C")</MudText>
+                </MudCard>
+            </MudItem>
+            <MudItem xs="12" sm="6" md="3">
+                <MudCard Elevation="2" Class="rounded-lg pa-3">
+                    <MudText Typo="Typo.caption" Color="Color.Secondary" Style="font-weight: 600;">PERÍODO</MudText>
+                    <MudText Typo="Typo.subtitle1" Color="Color.Secondary" Style="font-weight: 700;">
+                        @(parcelasPrevia.MinBy(p => p.DataVencimento)?.DataVencimento.ToString("dd/MM/yy")) até @(parcelasPrevia.MaxBy(p => p.DataVencimento)?.DataVencimento.ToString("dd/MM/yy"))
+                    </MudText>
+                </MudCard>
+            </MudItem>
+        </MudGrid>
+
+        <!-- Filtros e Ações na Prévia -->
+        <MudCard Elevation="2" Class="mb-4 rounded-lg">
+            <MudCardContent>
+                <MudGrid Spacing="2" Class="align-center">
+                    <MudItem xs="12" md="5">
+                        <MudTextField @bind-Value="buscaPrevia"
+                                      Placeholder="Filtrar prévia por cliente ou CPF/CNPJ..."
+                                      Adornment="Adornment.Start"
+                                      AdornmentIcon="@Icons.Material.Filled.Search"
+                                      Immediate="true"
+                                      DebounceInterval="300"
+                                      OnDebounceIntervalElapsed="FiltrarPrevia"
+                                      Variant="Variant.Outlined"
+                                      Margin="Margin.Dense"
+                                      Clearable="true"
+                                      OnClearButtonClick="LimparBuscaPrevia" />
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="4">
+                        <MudSelect T="int" Value="@clientePreviaFiltro" ValueChanged="OnClientePreviaFiltroChanged" Label="Filtrar por Cliente Específico" Variant="Variant.Outlined" Margin="Margin.Dense" Dense="true">
+                            <MudSelectItem Value="0">Todos os Clientes na Prévia</MudSelectItem>
+                            @foreach (var c in clientesPreviaList)
+                            {
+                                <MudSelectItem Value="@c.Id">@c.Razao</MudSelectItem>
+                            }
+                        </MudSelect>
+                    </MudItem>
+
+                    <MudItem xs="12" sm="6" md="3" Class="d-flex justify-end gap-2">
+                        @if (parcelasSelecionadasNaPrevia.Count > 0)
+                        {
+                            <MudButton Variant="Variant.Filled" Color="Color.Error" Size="Size.Small" StartIcon="@Icons.Material.Filled.Delete" OnClick="ExcluirSelecionadasPrevia">
+                                Apagar Selecionadas (@parcelasSelecionadasNaPrevia.Count)
+                            </MudButton>
+                        }
+                    </MudItem>
+                </MudGrid>
+            </MudCardContent>
+        </MudCard>
+
+        <!-- Tabela de Confirmação e Edição da Prévia -->
+        <MudTable Items="@parcelasPreviaFiltradas"
+                  MultiSelection="true"
+                  @bind-SelectedItems="parcelasSelecionadasNaPrevia"
+                  Hover="true"
+                  Striped="true"
+                  Elevation="2"
+                  Dense="true"
+                  HorizontalScrollbar="true"
+                  RowsPerPage="15">
+            <HeaderContent>
+                <MudTh Style="width: 80px; text-align: center;">Parc.</MudTh>
+                <MudTh Style="min-width: 200px;">Cliente</MudTh>
+                <MudTh Style="min-width: 160px; white-space: nowrap;">CPF / CNPJ</MudTh>
+                <MudTh Style="min-width: 195px; width: 195px; white-space: nowrap;">Data Vencimento</MudTh>
+                <MudTh Style="min-width: 140px; width: 140px; text-align: right; white-space: nowrap;">Valor (R$)</MudTh>
+                <MudTh Style="min-width: 140px; width: 140px; text-align: right; white-space: nowrap;">Juros Venc. (R$)</MudTh>
+                <MudTh Style="min-width: 220px;">Observação</MudTh>
+                <MudTh Style="width: 70px; text-align: right;">Ação</MudTh>
+            </HeaderContent>
+            <RowTemplate>
+                <MudTd DataLabel="Parc." Style="width: 80px; text-align: center;">
+                    <MudChip T="string" Size="Size.Small" Color="Color.Primary" Variant="Variant.Outlined">
+                        @context.NumeroParcela/@context.TotalParcelas
+                    </MudChip>
+                </MudTd>
+                <MudTd DataLabel="Cliente" Style="min-width: 200px;">
+                    <MudText Typo="Typo.body2" Style="font-weight: 600;">@context.NomeCliente</MudText>
+                </MudTd>
+                <MudTd DataLabel="CPF / CNPJ" Style="min-width: 160px; white-space: nowrap;">
+                    <MudText Typo="Typo.caption" Style="font-family: monospace;">@FormatCgcCpf(context.CPFCNPJ)</MudText>
+                </MudTd>
+                <MudTd DataLabel="Vencimento" Style="min-width: 195px; width: 195px;">
+                    <MudDatePicker Date="@context.DataVencimento"
+                                   DateChanged="@(d => context.DataVencimento = d ?? context.DataVencimento)"
+                                   DateFormat="dd/MM/yyyy"
+                                   Margin="Margin.Dense"
+                                   Variant="Variant.Outlined"
+                                   Style="min-width: 185px; width: 100%;" />
+                </MudTd>
+                <MudTd DataLabel="Valor (R$)" Style="min-width: 140px; width: 140px; text-align: right;">
+                    <MudNumericField @bind-Value="context.Valor"
+                                     Format="N2"
+                                     Culture="@ptBr"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Style="min-width: 120px; width: 100%;" />
+                </MudTd>
+                <MudTd DataLabel="Juros Venc." Style="min-width: 140px; width: 140px; text-align: right;">
+                    <MudNumericField @bind-Value="context.Juros"
+                                     Format="N2"
+                                     Culture="@ptBr"
+                                     Variant="Variant.Outlined"
+                                     Margin="Margin.Dense"
+                                     Style="min-width: 120px; width: 100%;" />
+                </MudTd>
+                <MudTd DataLabel="Observação" Style="min-width: 220px;">
+                    <MudTextField @bind-Value="context.Observacao"
+                                  Variant="Variant.Outlined"
+                                  Margin="Margin.Dense" />
+                </MudTd>
+                <MudTd DataLabel="Ação" Style="width: 70px; text-align: right;">
+                    <MudTooltip Text="Remover esta parcela da prévia">
+                        <MudIconButton Icon="@Icons.Material.Filled.Delete" Color="Color.Error" Size="Size.Small" OnClick="@(() => RemoverParcelaPrevia(context))" />
+                    </MudTooltip>
+                </MudTd>
+            </RowTemplate>
+            <PagerContent>
+                <MudTablePager InfoFormat="{first_item}-{last_item} de {all_items}" RowsPerPageString="Parcelas por página:" />
+            </PagerContent>
+        </MudTable>
+
+        <!-- Barra Final de Gravação no Banco -->
+        <MudPaper Elevation="3" Class="pa-4 mt-4 rounded-lg d-flex justify-space-between align-center flex-wrap gap-2">
+            <div>
+                <MudButton Variant="Variant.Outlined" Color="Color.Secondary" StartIcon="@Icons.Material.Filled.ArrowBack" OnClick="@(() => MudarEtapa(2))">
+                    Voltar aos Parâmetros
+                </MudButton>
+                <MudButton Variant="Variant.Text" Color="Color.Error" StartIcon="@Icons.Material.Filled.ClearAll" OnClick="DescartarPrevia" Class="ml-2">
+                    Descartar Prévia
+                </MudButton>
+            </div>
+            <div class="d-flex align-center gap-3">
+                <div>
+                    <MudText Typo="Typo.body2" Align="Align.Right">Total de Títulos a Criar: <b>@parcelasPrevia.Count</b></MudText>
+                    <MudText Typo="Typo.h6" Align="Align.Right" Color="Color.Success" Style="font-weight: 700;">
+                        @parcelasPrevia.Sum(p => p.Valor).ToString("C")
+                    </MudText>
+                </div>
+                <MudButton Variant="Variant.Filled"
+                           Color="Color.Success"
+                           Size="Size.Large"
+                           StartIcon="@Icons.Material.Filled.Save"
+                           Disabled="@(salvando || parcelasPrevia.Count == 0)"
+                           OnClick="SalvarTodasParcelasNoBanco">
+                    @if (salvando)
+                    {
+                        <MudProgressCircular Class="ms-n1 me-2" Size="Size.Small" Indeterminate="true" />
+                        <span>Gravando @parcelasPrevia.Count títulos...</span>
+                    }
+                    else
+                    {
+                        <span>Confirmar e Gravar no Banco</span>
+                    }
+                </MudButton>
+            </div>
+        </MudPaper>
+    }
+}
+
+@code {
+    private CultureInfo ptBr = new CultureInfo("pt-BR");
+    private int etapaAtual = 1;
+    private bool loading = true;
+    private bool salvando = false;
+
+    // Etapa 1 - Clientes
+    private List<ClienteItem> todosItens = new();
+    private List<ClienteItem> itensFiltrados = new();
+    private HashSet<ClienteItem> itensSelecionados = new();
+    private string buscaCliente = "";
+    private bool somenteComValores = true;
+    private bool apenasAtivos = true;
+
+    // Etapa 2 - Parâmetros
+    private int paramQtdParcelas = 12;
+    private decimal? paramJurosVencimento = 0;
+    private int paramDiaVencimento = 10;
+    private int paramMesInicial = DateTime.Now.Month;
+    private int paramAnoInicial = DateTime.Now.Year;
+    private string paramObservacao = "Mensalidade do Sistema SyncOS";
+
+    // Etapa 3 - Prévia
+    private List<ParcelaPrevia> parcelasPrevia = new();
+    private List<ParcelaPrevia> parcelasPreviaFiltradas = new();
+    private HashSet<ParcelaPrevia> parcelasSelecionadasNaPrevia = new();
+    private List<Cliente> clientesPreviaList = new();
+    private string buscaPrevia = "";
+    private int clientePreviaFiltro = 0;
+
+    private List<BreadcrumbItem> _breadcrumbItems = new();
+
+    private decimal TotalParcelasSelecionadas => itensSelecionados.Sum(i => i.ValorParcela);
+
+    protected override async Task OnInitializedAsync()
+    {
+        _breadcrumbItems = new List<BreadcrumbItem>
+        {
+            new BreadcrumbItem("Início", href: "/"),
+            new BreadcrumbItem("Parcelas", href: "/parcelas"),
+            new BreadcrumbItem("Geração em Lote", href: null, disabled: true)
+        };
+
+        if (DateTime.Now.Day > 20)
+        {
+            var prox = DateTime.Now.AddMonths(1);
+            paramMesInicial = prox.Month;
+            paramAnoInicial = prox.Year;
+        }
+
+        await CarregarClientes();
+    }
+
+    private async Task CarregarClientes()
+    {
+        loading = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var clientes = await ctx.Clientes
+                .AsNoTracking()
+                .OrderBy(c => c.Razao)
+                .ToListAsync();
+
+            todosItens = clientes.Select(c => new ClienteItem
+            {
+                Cliente = c,
+                ValorParcela = (decimal)c.ValorContrato
+            }).ToList();
+
+            FiltrarClientes();
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao carregar clientes: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            loading = false;
+        }
+    }
+
+    private async Task SalvarCampoCliente(ClienteItem item, string campo, double novoValor)
+    {
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+            var dbCliente = await ctx.Clientes.FindAsync(item.Cliente.Id);
+            if (dbCliente != null)
+            {
+                switch (campo)
+                {
+                    case nameof(Cliente.ValorContrato):
+                        dbCliente.ValorContrato = novoValor;
+                        item.Cliente.ValorContrato = novoValor;
+                        break;
+                    case nameof(Cliente.ValorContratoBackup):
+                        dbCliente.ValorContratoBackup = novoValor;
+                        item.Cliente.ValorContratoBackup = novoValor;
+                        break;
+                    case nameof(Cliente.ValorTef):
+                        dbCliente.ValorTef = novoValor;
+                        item.Cliente.ValorTef = novoValor;
+                        break;
+                    case nameof(Cliente.ValorSped):
+                        dbCliente.ValorSped = novoValor;
+                        item.Cliente.ValorSped = novoValor;
+                        break;
+                    case nameof(Cliente.ValorManifesto):
+                        dbCliente.ValorManifesto = novoValor;
+                        item.Cliente.ValorManifesto = novoValor;
+                        break;
+                }
+
+                dbCliente.DataAlteracao = DateTime.Now;
+                await ctx.SaveChangesAsync();
+
+                // "Ao alterar o valor mostrado do campo valor (...) da tabela de cliente 
+                // ao tirar o campo de foco o sistema deve atualizar a tabela de cliente e enviar esse valor para a parcela."
+                item.ValorParcela = (decimal)novoValor;
+
+                Snackbar.Add($"Cliente #{item.Cliente.Id} ({item.Cliente.Razao}): {ObterNomeAmigavelCampo(campo)} atualizado no banco para {novoValor.ToString("C", ptBr)} e enviado para a parcela!", Severity.Success);
+                StateHasChanged();
+            }
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao atualizar cadastro do cliente no banco: {ex.Message}", Severity.Error);
+        }
+    }
+
+    private string ObterNomeAmigavelCampo(string campo) => campo switch
+    {
+        nameof(Cliente.ValorContrato) => "Valor Contrato/Manutenção",
+        nameof(Cliente.ValorContratoBackup) => "Valor Backup",
+        nameof(Cliente.ValorTef) => "Valor TEF",
+        nameof(Cliente.ValorSped) => "Valor SPED",
+        nameof(Cliente.ValorManifesto) => "Valor Manifesto",
+        _ => campo
+    };
+
+    private void FiltrarClientes()
+    {
+        var query = todosItens.AsEnumerable();
+
+        if (apenasAtivos)
+        {
+            query = query.Where(i => !i.Cliente.Desativado);
+        }
+
+        if (somenteComValores)
+        {
+            query = query.Where(i => i.ValorParcela > 0 || i.Cliente.ValorContrato > 0);
+        }
+
+        if (!string.IsNullOrWhiteSpace(buscaCliente))
+        {
+            var termo = buscaCliente.Trim().ToLower();
+            query = query.Where(i =>
+                (i.Cliente.Razao != null && i.Cliente.Razao.ToLower().Contains(termo)) ||
+                (i.Cliente.Fantasia != null && i.Cliente.Fantasia.ToLower().Contains(termo)) ||
+                (i.Cliente.CPF_CNPJ != null && i.Cliente.CPF_CNPJ.Contains(termo))
+            );
+        }
+
+        itensFiltrados = query.ToList();
+    }
+
+    private void OnFiltroValorChanged(bool val)
+    {
+        somenteComValores = val;
+        FiltrarClientes();
+    }
+
+    private void OnFiltroAtivosChanged(bool val)
+    {
+        apenasAtivos = val;
+        FiltrarClientes();
+    }
+
+    private void LimparBuscaCliente()
+    {
+        buscaCliente = "";
+        FiltrarClientes();
+    }
+
+    private void SelecionarTodosFiltrados()
+    {
+        foreach (var i in itensFiltrados)
+        {
+            itensSelecionados.Add(i);
+        }
+    }
+
+    private void DesmarcarTodos()
+    {
+        itensSelecionados.Clear();
+    }
+
+    private void MudarEtapa(int etapa)
+    {
+        if (etapa == 2 && itensSelecionados.Count == 0)
+        {
+            Snackbar.Add("Selecione pelo menos um cliente para continuar.", Severity.Warning);
+            return;
+        }
+
+        if (etapa == 3 && parcelasPrevia.Count == 0)
+        {
+            GerarPreviaParcelas();
+            return;
+        }
+
+        etapaAtual = etapa;
+    }
+
+    private DateTime CalcularDataUltimaParcela()
+    {
+        var dt = new DateTime(paramAnoInicial, paramMesInicial, 1).AddMonths(paramQtdParcelas - 1);
+        int dias = DateTime.DaysInMonth(dt.Year, dt.Month);
+        int dia = Math.Min(paramDiaVencimento, dias);
+        return new DateTime(dt.Year, dt.Month, dia);
+    }
+
+    private void GerarPreviaParcelas()
+    {
+        if (itensSelecionados.Count == 0)
+        {
+            Snackbar.Add("Nenhum cliente selecionado.", Severity.Warning);
+            return;
+        }
+
+        if (paramQtdParcelas <= 0)
+        {
+            Snackbar.Add("A quantidade de parcelas deve ser maior que zero.", Severity.Warning);
+            return;
+        }
+
+        parcelasPrevia.Clear();
+        parcelasSelecionadasNaPrevia.Clear();
+
+        foreach (var item in itensSelecionados.OrderBy(x => x.Cliente.Razao))
+        {
+            var valorBase = item.ValorParcela;
+            var nomeCli = !string.IsNullOrWhiteSpace(item.Cliente.Razao) ? item.Cliente.Razao : item.Cliente.Fantasia;
+            var tel = !string.IsNullOrWhiteSpace(item.Cliente.WhatsApp) ? item.Cliente.WhatsApp : item.Cliente.Contato;
+
+            for (int i = 0; i < paramQtdParcelas; i++)
+            {
+                var refDate = new DateTime(paramAnoInicial, paramMesInicial, 1).AddMonths(i);
+                int diasNoMes = DateTime.DaysInMonth(refDate.Year, refDate.Month);
+                int diaFinal = Math.Min(paramDiaVencimento, diasNoMes);
+                var dataVencimento = new DateTime(refDate.Year, refDate.Month, diaFinal);
+
+                parcelasPrevia.Add(new ParcelaPrevia
+                {
+                    ClienteId = item.Cliente.Id,
+                    NomeCliente = nomeCli,
+                    CPFCNPJ = item.Cliente.CPF_CNPJ,
+                    Fone = tel,
+                    Email = item.Cliente.Email,
+                    NumeroParcela = i + 1,
+                    TotalParcelas = paramQtdParcelas,
+                    DataVencimento = dataVencimento,
+                    Valor = valorBase,
+                    Juros = paramJurosVencimento,
+                    Status = "A",
+                    Observacao = paramObservacao
+                });
+            }
+        }
+
+        clientesPreviaList = itensSelecionados.Select(i => i.Cliente).OrderBy(c => c.Razao).ToList();
+        FiltrarPrevia();
+        etapaAtual = 3;
+        Snackbar.Add($"{parcelasPrevia.Count} parcelas geradas na prévia para conferência!", Severity.Success);
+    }
+
+    private void FiltrarPrevia()
+    {
+        var query = parcelasPrevia.AsEnumerable();
+
+        if (clientePreviaFiltro > 0)
+        {
+            query = query.Where(p => p.ClienteId == clientePreviaFiltro);
+        }
+
+        if (!string.IsNullOrWhiteSpace(buscaPrevia))
+        {
+            var termo = buscaPrevia.Trim().ToLower();
+            query = query.Where(p =>
+                (p.NomeCliente != null && p.NomeCliente.ToLower().Contains(termo)) ||
+                (p.CPFCNPJ != null && p.CPFCNPJ.Contains(termo)) ||
+                (p.Observacao != null && p.Observacao.ToLower().Contains(termo))
+            );
+        }
+
+        parcelasPreviaFiltradas = query.ToList();
+    }
+
+    private void OnClientePreviaFiltroChanged(int val)
+    {
+        clientePreviaFiltro = val;
+        FiltrarPrevia();
+    }
+
+    private void LimparBuscaPrevia()
+    {
+        buscaPrevia = "";
+        FiltrarPrevia();
+    }
+
+    private void RemoverParcelaPrevia(ParcelaPrevia p)
+    {
+        parcelasPrevia.Remove(p);
+        parcelasSelecionadasNaPrevia.Remove(p);
+        FiltrarPrevia();
+        Snackbar.Add("Parcela removida da prévia.", Severity.Info);
+    }
+
+    private void ExcluirSelecionadasPrevia()
+    {
+        foreach (var p in parcelasSelecionadasNaPrevia.ToList())
+        {
+            parcelasPrevia.Remove(p);
+        }
+        parcelasSelecionadasNaPrevia.Clear();
+        FiltrarPrevia();
+        Snackbar.Add("Parcelas selecionadas excluídas da prévia.", Severity.Success);
+    }
+
+    private async Task DescartarPrevia()
+    {
+        bool? confirm = await DialogService.ShowMessageBoxAsync(
+            "Descartar Prévia",
+            "Deseja descartar todos os títulos gerados na prévia e recomeçar?",
+            yesText: "Sim, Descartar", cancelText: "Não");
+
+        if (confirm == true)
+        {
+            parcelasPrevia.Clear();
+            parcelasPreviaFiltradas.Clear();
+            parcelasSelecionadasNaPrevia.Clear();
+            etapaAtual = 1;
+        }
+    }
+
+    private async Task SalvarTodasParcelasNoBanco()
+    {
+        if (parcelasPrevia.Count == 0)
+        {
+            Snackbar.Add("Não há parcelas para salvar.", Severity.Warning);
+            return;
+        }
+
+        bool? confirmar = await DialogService.ShowMessageBoxAsync(
+            "Confirmar Gravação em Lote",
+            $"Confirma a gravação definitiva de {parcelasPrevia.Count} parcelas no valor total de {parcelasPrevia.Sum(p => p.Valor).ToString("C", ptBr)} no banco de dados?",
+            yesText: "Confirmar e Gravar", cancelText: "Revisar");
+
+        if (confirmar != true) return;
+
+        salvando = true;
+        try
+        {
+            using var ctx = await DbFactory.CreateDbContextAsync();
+
+            var entidades = parcelasPrevia.Select(p => new Parcela
+            {
+                ClienteId = p.ClienteId,
+                NomeCliente = p.NomeCliente,
+                CPFCNPJ = !string.IsNullOrEmpty(p.CPFCNPJ) ? Regex.Replace(p.CPFCNPJ, @"[^\d]", "") : null,
+                Fone = !string.IsNullOrEmpty(p.Fone) ? Regex.Replace(p.Fone, @"[^\d]", "") : null,
+                Email = p.Email,
+                DataVencimento = p.DataVencimento,
+                Valor = p.Valor,
+                Status = p.Status ?? "A",
+                Observacao = p.Observacao,
+                Juros = p.Juros
+            }).ToList();
+
+            ctx.Parcelas.AddRange(entidades);
+            await ctx.SaveChangesAsync();
+
+            Snackbar.Add($"Sucesso! {entidades.Count} parcelas foram gravadas com sucesso no banco de dados!", Severity.Success);
+            Navigation.NavigateTo("/parcelas");
+        }
+        catch (Exception ex)
+        {
+            Snackbar.Add($"Erro ao gravar parcelas: {ex.Message}", Severity.Error);
+        }
+        finally
+        {
+            salvando = false;
+        }
+    }
+
+    private string FormatCgcCpf(string doc)
+    {
+        if (string.IsNullOrEmpty(doc)) return "-";
+        var nums = Regex.Replace(doc, @"[^\d]", "");
+        if (nums.Length == 11)
+            return $"{nums.Substring(0, 3)}.{nums.Substring(3, 3)}.{nums.Substring(6, 3)}-{nums.Substring(9, 2)}";
+        if (nums.Length == 14)
+            return $"{nums.Substring(0, 2)}.{nums.Substring(2, 3)}.{nums.Substring(5, 3)}/{nums.Substring(8, 4)}-{nums.Substring(12, 2)}";
+        return doc;
+    }
+
+    public class ClienteItem
+    {
+        public Cliente Cliente { get; set; }
+        public decimal ValorParcela { get; set; }
+    }
+
+    public class ParcelaPrevia
+    {
+        public string TempId { get; set; } = Guid.NewGuid().ToString();
+        public int ClienteId { get; set; }
+        public string NomeCliente { get; set; }
+        public string CPFCNPJ { get; set; }
+        public string Fone { get; set; }
+        public string Email { get; set; }
+        public int NumeroParcela { get; set; }
+        public int TotalParcelas { get; set; }
+        public DateTime DataVencimento { get; set; }
+        public decimal Valor { get; set; }
+        public decimal? Juros { get; set; }
+        public string Status { get; set; } = "A";
+        public string Observacao { get; set; }
+    }
+}
